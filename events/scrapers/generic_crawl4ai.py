@@ -198,7 +198,14 @@ class GenericCrawl4AIScraper:
                 - Common URL patterns are:
                   * /event/[id]-[slug]
                   * /events/[id]
-                  * /[year]/[month]/[slug]""",
+                  * /[year]/[month]/[slug]
+                
+                For Images:
+                - Look for <img> tags within event cards or listings
+                - Check for both src and data-src attributes
+                - Look for high-resolution versions in data-* attributes
+                - Common locations: event thumbnails, featured images, gallery previews
+                - Make sure to get the full absolute URL for images""",
                 extra_args=extra_args,
             ),
         )
@@ -245,10 +252,20 @@ class GenericCrawl4AIScraper:
                     else:
                         logger.error("  ✗ No URL found for this event")
                     
+                    # Image URL normalization and logging
+                    original_image_url = listing.get('event_image_url', '')
+                    logger.info(f"- Original Image URL: {original_image_url}")
+                    
+                    if original_image_url:
+                        normalized_image_url = self.normalize_url(url, original_image_url)
+                        logger.info(f"- Normalized Image URL: {normalized_image_url}")
+                        listing['event_image_url'] = normalized_image_url
+                    else:
+                        logger.warning("  ⚠ No image URL found in listing, will try detail page")
+                    
                     logger.info(f"- Date: {listing.get('event_date', 'N/A')}")
                     logger.info(f"- Start Time: {listing.get('event_start_time', 'N/A')}")
                     logger.info(f"- Venue: {listing.get('event_venue', 'N/A')}")
-                    logger.info(f"- Has Image URL: {'Yes' if listing.get('event_image_url') else 'No'}")
                     
                     normalized_listings.append(listing)
 
@@ -403,6 +420,17 @@ class GenericCrawl4AIScraper:
                             except Exception as e:
                                 logger.error(f"Error creating datetime: {str(e)}")
 
+                        # Handle image URL with fallback logic
+                        image_url = listing.get('event_image_url')  # Try listing page image first
+                        if not image_url:
+                            logger.info("No image URL from listing page, trying detail page...")
+                            detail_image_url = event_details.get('event_image_url')
+                            if detail_image_url:
+                                image_url = self.normalize_url(event_url, detail_image_url)
+                                logger.info(f"Found image URL on detail page: {image_url}")
+                            else:
+                                logger.warning("No image URL found on either listing or detail page")
+
                         formatted_event = {
                             'title': event_details.get('event_title', ''),
                             'description': event_details.get('event_description', ''),
@@ -415,7 +443,7 @@ class GenericCrawl4AIScraper:
                             'venue_zip': event_details.get('event_venue_zip', ''),
                             'venue_country': event_details.get('event_venue_country', ''),
                             'url': event_details.get('event_url', ''),
-                            'image_url': event_details.get('event_image_url', ''),
+                            'image_url': image_url,
                         }
 
                         logger.info(f"Formatted event: {json.dumps(formatted_event, indent=2)}")
