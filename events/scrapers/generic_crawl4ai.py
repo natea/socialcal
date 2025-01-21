@@ -26,68 +26,78 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
     logger.info(f"Parsing date: '{date_str}' and time: '{time_str}'")
     
     try:
-        # Try to parse the date first
-        current_year = datetime.now().year
-        date_obj = None
-        
-        # Clean up the date string
-        date_str = date_str.strip()
-        
-        # List of formats to try, in order
-        date_formats = [
-            ("%Y-%m-%d", date_str),                    # YYYY-MM-DD
-            ("%m/%d/%Y", date_str),                    # MM/DD/YYYY
-            ("%B %d, %Y", date_str),                   # Month DD, YYYY
-            ("%m/%d", f"{date_str}/{current_year}"),   # MM/DD -> MM/DD/YYYY
-            ("%B %d", f"{date_str}, {current_year}")   # Month DD -> Month DD, YYYY
-        ]
-        
-        # Try each format until one works
-        for fmt, d_str in date_formats:
+        # Handle multi-day event format
+        if '\n' in date_str or date_str.count(',') > 1:
+            logger.info("Detected multi-day event format")
+            # Split into lines and clean up
+            lines = [line.strip() for line in date_str.split('\n') if line.strip()]
+            if not lines:
+                lines = [part.strip() for part in date_str.split(',') if part.strip()]
+            
+            # Extract the first date (start date)
+            start_date_str = lines[0]
+            # Remove day of week if present
+            if ',' in start_date_str:
+                start_date_str = start_date_str.split(',', 1)[1].strip()
+            
+            # Parse the start date
             try:
-                date_obj = datetime.strptime(d_str, fmt)
-                logger.info(f"Successfully parsed date '{date_str}' using format '{fmt}'")
-                break
-            except ValueError:
-                continue
-        
-        if not date_obj:
-            logger.error(f"Could not parse date: {date_str}")
-            return "", ""
-        
-        # Format date for Django
-        formatted_date = date_obj.strftime("%Y-%m-%d")
-        logger.info(f"Formatted date: {formatted_date}")
-        
-        # Parse the time
-        # Clean up the time string
-        time_str = time_str.replace('.', '').strip()
-        
-        # List of time formats to try, in order
-        time_formats = [
-            ("%I:%M %p", time_str),           # HH:MM AM/PM
-            ("%H:%M", time_str),              # HH:MM (24-hour)
-            ("%I %p", time_str),              # H AM/PM
-            ("%m/%d/%Y %I:%M %p", time_str)   # MM/DD/YYYY HH:MM AM/PM (combined)
-        ]
-        
-        # Try each format until one works
-        formatted_time = ""
-        for fmt, t_str in time_formats:
+                start_date = datetime.strptime(start_date_str, '%B %d, %Y')
+                formatted_date = start_date.strftime('%Y-%m-%d')
+                logger.info(f"Parsed start date: {formatted_date}")
+            except ValueError as e:
+                logger.error(f"Error parsing start date: {str(e)}")
+                return "", ""
+            
+            # Parse the time
+            # For multi-day events, time is often included with the date
+            # Example: "Saturday, January 25, 2025 10:30 PM"
+            time_parts = time_str.strip().split()
+            if len(time_parts) >= 2:
+                time_str = ' '.join(time_parts[:2])  # Take first time as start time
+                try:
+                    time_obj = datetime.strptime(time_str, '%I:%M %p')
+                    formatted_time = time_obj.strftime('%H:%M:%S')
+                    logger.info(f"Parsed start time: {formatted_time}")
+                    return formatted_date, formatted_time
+                except ValueError as e:
+                    logger.error(f"Error parsing time: {str(e)}")
+                    return formatted_date, ""
+            
+            return formatted_date, ""
+            
+        # Handle single-day event format
+        else:
+            logger.info("Detected single-day event format")
+            # Remove day of week if present
+            if ',' in date_str:
+                date_str = date_str.split(',', 1)[1].strip()
+            
+            # Parse the date
             try:
-                time_obj = datetime.strptime(t_str, fmt)
-                formatted_time = time_obj.strftime("%H:%M:%S")
-                logger.info(f"Successfully parsed time '{time_str}' using format '{fmt}'")
-                break
-            except ValueError:
-                continue
-        
-        if not formatted_time:
-            logger.error(f"Could not parse time: {time_str}")
-            return formatted_date, ""  # Return date even if time parsing fails
-        
-        logger.info(f"Formatted time: {formatted_time}")
-        return formatted_date, formatted_time
+                date_obj = datetime.strptime(date_str, '%B %d, %Y')
+                formatted_date = date_obj.strftime('%Y-%m-%d')
+                logger.info(f"Parsed date: {formatted_date}")
+            except ValueError as e:
+                logger.error(f"Error parsing date: {str(e)}")
+                return "", ""
+            
+            # Parse the time
+            # Handle format "12:00 PM  3:00 PM"
+            time_parts = time_str.strip().split()
+            if len(time_parts) >= 2:
+                start_time_str = ' '.join(time_parts[:2])  # Take first time as start time
+                try:
+                    time_obj = datetime.strptime(start_time_str, '%I:%M %p')
+                    formatted_time = time_obj.strftime('%H:%M:%S')
+                    logger.info(f"Parsed time: {formatted_time}")
+                    return formatted_date, formatted_time
+                except ValueError as e:
+                    logger.error(f"Error parsing time: {str(e)}")
+                    return formatted_date, ""
+            
+            return formatted_date, ""
+            
     except Exception as e:
         logger.error(f"Error parsing datetime: {str(e)}")
         return "", ""
@@ -124,11 +134,15 @@ class GenericCrawl4AIScraper:
         logger.info(f"Normalizing URL - Base: {base_url}, Event: {event_url}")
         
         try:
-            # Remove any XML/HTML-like brackets
+            # Remove any XML/HTML-like brackets and tags
+            event_url = re.sub(r'</?[^>]+/?>', '', event_url)
             event_url = event_url.strip('<>')
             
-            # Remove any duplicate slashes
+            # Remove any duplicate slashes, but preserve protocol slashes
             event_url = re.sub(r'([^:])//+', r'\1/', event_url)
+            
+            # Clean up any malformed parts
+            event_url = event_url.replace('<//', '/').replace('/>', '/').replace('</', '/')
             
             # If it's already an absolute URL, just clean it and return
             if event_url.startswith(('http://', 'https://')):
