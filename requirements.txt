@@ -1,0 +1,51 @@
+# Django and core dependencies
+Django==4.2.9
+python-dotenv==1.0.1
+beautifulsoup4==4.12.3
+djangorestframework==3.14.0
+lxml==5.3.0
+certifi==2024.8.30
+
+# Authentication and Social Login
+django-allauth==0.60.1
+
+# Image resizing/compression
+Pillow==10.4.0
+
+# Calendar and Event Management
+icalendar==5.0.11
+google-api-python-client==2.120.0
+
+# Scraping and Data Extraction
+webdriver-manager==4.0.1
+pyvirtualdisplay==3.0
+ipdb==0.13.13
+nodriver
+pdbp
+tabcompleter
+sbvirtualdisplay
+firecrawl-py
+#trafilatura==1.9.0
+#unstructured
+requests
+crawl4ai==0.4.247
+
+# Background Tasks
+celery==5.3.6
+redis==5.0.1
+
+# Development and Testing
+pytest
+coverage==7.4.0
+
+# Deployment
+gunicorn==21.2.0
+whitenoise==6.6.0
+
+# AI libraries
+openai
+groq
+google-generativeai
+
+# New dependencies
+pytz==2024.1

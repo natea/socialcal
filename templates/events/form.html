@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Event{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h2>{{ action }} Event</h2>
+        <form method="post" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            <div class="row g-3">
+                <!-- Title and Description -->
+                <div class="col-12">
+                    <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+                    {{ form.title }}
+                </div>
+                <div class="col-12">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                    {{ form.description }}
+                </div>
+
+                <!-- Venue Information -->
+                <div class="col-12">
+                    <h4 class="mb-3">Venue Information</h4>
+                </div>
+                <div class="col-12">
+                    <label for="{{ form.venue_name.id_for_label }}" class="form-label">Venue Name</label>
+                    {{ form.venue_name }}
+                </div>
+                <div class="col-12">
+                    <label for="{{ form.venue_address.id_for_label }}" class="form-label">Address</label>
+                    {{ form.venue_address }}
+                </div>
+                <div class="col-md-6">
+                    <label for="{{ form.venue_city.id_for_label }}" class="form-label">City</label>
+                    {{ form.venue_city }}
+                </div>
+                <div class="col-md-4">
+                    <label for="{{ form.venue_state.id_for_label }}" class="form-label">State</label>
+                    {{ form.venue_state }}
+                </div>
+                <div class="col-md-2">
+                    <label for="{{ form.venue_postal_code.id_for_label }}" class="form-label">Postal Code</label>
+                    {{ form.venue_postal_code }}
+                </div>
+                <div class="col-12">
+                    <label for="{{ form.venue_country.id_for_label }}" class="form-label">Country</label>
+                    {{ form.venue_country }}
+                </div>
+
+                <!-- Date and Time -->
+                <div class="col-12">
+                    <h4 class="mb-3">Date and Time</h4>
+                </div>
+                <div class="col-12 mb-3">
+                    <label for="{{ form.timezone.id_for_label }}" class="form-label">Timezone</label>
+                    {{ form.timezone }}
+                    {% if form.timezone.help_text %}
+                        <div class="form-text">{{ form.timezone.help_text }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label for="{{ form.start_time.id_for_label }}" class="form-label">Start Time</label>
+                    {{ form.start_time }}
+                </div>
+                <div class="col-md-6">
+                    <label for="{{ form.end_time.id_for_label }}" class="form-label">End Time</label>
+                    {{ form.end_time }}
+                </div>
+
+                <!-- URLs and Settings -->
+                <div class="col-12">
+                    <h4 class="mb-3">Additional Information</h4>
+                </div>
+                <div class="col-12">
+                    <label for="{{ form.url.id_for_label }}" class="form-label">Event URL</label>
+                    {{ form.url }}
+                </div>
+                <div class="col-12">
+                    <label for="{{ form.image_url.id_for_label }}" class="form-label">Image URL</label>
+                    <div class="input-group mb-3">
+                        {{ form.image_url }}
+                        <button type="button" class="btn btn-outline-secondary btn-preview-image">Preview</button>
+                    </div>
+                    <div id="imagePreview" class="mt-2 border rounded p-2" style="display: none;">
+                        <div class="preview-content"></div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ form.is_public }}
+                        <label class="form-check-label" for="{{ form.is_public.id_for_label }}">
+                            Make this event public
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">{{ action }} Event</button>
+                <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Function to show error message
+    function showError(message) {
+        console.log('Showing error:', message);
+        const $previewDiv = $('#imagePreview');
+        const $previewContent = $previewDiv.find('.preview-content');
+        
+        $previewContent.html(
+            `<div class="alert alert-danger mb-0" role="alert">${message}</div>`
+        );
+        $previewDiv.show();
+    }
+
+    // Function to preview image
+    function previewImage() {
+        console.log('Preview button clicked');
+        const $imageUrlInput = $('#{{ form.image_url.id_for_label }}');
+        const imageUrl = $imageUrlInput.val().trim();
+        console.log('Image URL value:', imageUrl);
+        
+        const $previewDiv = $('#imagePreview');
+        const $previewContent = $previewDiv.find('.preview-content');
+        console.log('Preview div found:', $previewDiv.length > 0);
+        
+        if (!imageUrl) {
+            showError('Please enter an image URL first.');
+            return;
+        }
+
+        // Clear any existing content and show loading indicator
+        $previewContent.html(
+            '<div class="text-center py-3">' +
+            '<div class="spinner-border text-primary" role="status">' +
+            '<span class="visually-hidden">Loading...</span>' +
+            '</div>' +
+            '</div>'
+        );
+        $previewDiv.show();
+
+        // Create new image object
+        const img = new Image();
+        
+        img.onload = function() {
+            console.log('Image loaded successfully');
+            $previewContent.html(
+                `<img src="${imageUrl}" alt="Image preview" class="img-fluid" style="max-height: 200px;">`
+            );
+            $previewDiv.show();
+        };
+        
+        img.onerror = function() {
+            console.log('Image failed to load');
+            showError('Failed to load image. Please check the URL and make sure it points to a valid image file.');
+        };
+
+        // Start loading the image
+        img.src = imageUrl;
+    }
+
+    // Attach click handler to preview button
+    $('.btn-preview-image').on('click', previewImage);
+
+    // Preview image when URL is already present
+    const initialImageUrl = $('#{{ form.image_url.id_for_label }}').val().trim();
+    console.log('Initial image URL value:', initialImageUrl);
+    if (initialImageUrl) {
+        previewImage();
+    }
+
+    // Add timezone change handler
+    $('#{{ form.timezone.id_for_label }}').on('change', function() {
+        if (confirm('Changing the timezone will update the displayed times. Continue?')) {
+            $(this).closest('form').submit();
+        }
+    });
+});
+</script>
+{% endblock %} 

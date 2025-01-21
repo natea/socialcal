@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - {{ current_date|date:"F Y" }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ current_date|date:"F Y" }}</h2>
+    <div>
+        <a href="{% url 'calendar:month' year=prev_month.year month=prev_month.month %}" class="btn btn-outline-primary">&laquo; Previous</a>
+        <a href="{% url 'calendar:month' year=next_month.year month=next_month.month %}" class="btn btn-outline-primary">Next &raquo;</a>
+    </div>
+</div>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Mon</th>
+            <th>Tue</th>
+            <th>Wed</th>
+            <th>Thu</th>
+            <th>Fri</th>
+            <th>Sat</th>
+            <th>Sun</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for week in calendar %}
+        <tr>
+            {% for day in week %}
+            <td {% if day == 0 %}class="bg-light"{% endif %}>
+                {% if day != 0 %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ day }}</span>
+                        <a href="{% url 'events:create' %}" class="text-decoration-none">+</a>
+                    </div>
+                    {% for event in events %}
+                        {% if event.start_time.day == day %}
+                            <div class="small bg-primary text-white p-1 rounded mb-1">
+                                <a href="{% url 'events:detail' pk=event.pk %}" class="text-white text-decoration-none">
+                                    {{ event.title }}
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 

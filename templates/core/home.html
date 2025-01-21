@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to SocialCal{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1>Welcome to SocialCal</h1>
+    <p class="lead">Organize your social events and share your calendar with friends.</p>
+    {% if not user.is_authenticated %}
+        <div class="mt-4">
+            <a href="{% url 'account_signup' %}" class="btn btn-primary me-2">Sign Up</a>
+            <a href="{% url 'account_login' %}" class="btn btn-outline-primary">Login</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

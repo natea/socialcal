@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile.user.username }}'s Profile{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            {% if profile.avatar %}
+                <img src="{{ profile.avatar.url }}" class="card-img-top" alt="{{ profile.user.username }}">
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ profile.user.username }}</h5>
+                {% if profile.bio %}
+                    <p class="card-text">{{ profile.bio }}</p>
+                {% endif %}
+                {% if profile.location %}
+                    <p class="card-text"><small class="text-muted">📍 {{ profile.location }}</small></p>
+                {% endif %}
+                {% if user == profile.user %}
+                    <a href="{% url 'profiles:edit' username=user.username %}" class="btn btn-primary">Edit Profile</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <h3>Upcoming Events</h3>
+        {% for event in events %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">{{ event.title }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ event.start_time|date:"F j, Y g:i A" }}</h6>
+                    <p class="card-text">{{ event.description|truncatewords:30 }}</p>
+                    <a href="{% url 'events:detail' pk=event.pk %}" class="card-link">View Details</a>
+                </div>
+            </div>
+        {% empty %}
+            <p>No upcoming events.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 
