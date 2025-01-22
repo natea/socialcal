@@ -26,77 +26,113 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
     logger.info(f"Parsing date: '{date_str}' and time: '{time_str}'")
     
     try:
+        # Clean up input strings
+        date_str = date_str.strip()
+        time_str = time_str.strip()
+        
+        logger.info("Cleaned strings - Date: '{}', Time: '{}'".format(date_str, time_str))
+        
         # Handle multi-day event format
-        if '\n' in date_str or date_str.count(',') > 1:
+        # Example: "Wed, Jan 22, 2025 9:00 PM 21:00 Thu, Jan 23, 2025 12:00 AM 00:00"
+        if ' to ' in date_str or date_str.count(',') > 1 or ('AM' in date_str and 'PM' in date_str):
             logger.info("Detected multi-day event format")
-            # Split into lines and clean up
-            lines = [line.strip() for line in date_str.split('\n') if line.strip()]
-            if not lines:
-                lines = [part.strip() for part in date_str.split(',') if part.strip()]
             
-            # Extract the first date (start date)
-            start_date_str = lines[0]
-            # Remove day of week if present
-            if ',' in start_date_str:
-                start_date_str = start_date_str.split(',', 1)[1].strip()
+            # Split into parts and clean up
+            parts = date_str.split(' to ') if ' to ' in date_str else re.split(r'(?=Mon|Tue|Wed|Thu|Fri|Sat|Sun)', date_str)
+            parts = [p.strip() for p in parts if p.strip()]
+            logger.info(f"Split parts: {parts}")
             
-            # Parse the start date
-            try:
-                start_date = datetime.strptime(start_date_str, '%B %d, %Y')
-                formatted_date = start_date.strftime('%Y-%m-%d')
-                logger.info(f"Parsed start date: {formatted_date}")
-            except ValueError as e:
-                logger.error(f"Error parsing start date: {str(e)}")
+            # Take the first part (start date)
+            start_part = parts[0]
+            
+            # Extract date and time from the first part
+            # Try different date formats
+            date_formats = [
+                '%a, %b %d, %Y',     # Wed, Jan 22, 2025
+                '%A, %B %d, %Y',     # Wednesday, January 22, 2025
+                '%B %d, %Y'          # January 22, 2025
+            ]
+            
+            start_date = None
+            for fmt in date_formats:
+                try:
+                    # Extract just the date portion (before any time)
+                    date_portion = re.match(r'^([^0-9]+,\s*)?([A-Za-z]+\s+\d{1,2},\s*\d{4})', start_part)
+                    if date_portion:
+                        date_text = date_portion.group(2)
+                        start_date = datetime.strptime(date_text, '%B %d, %Y')
+                        logger.info(f"Successfully parsed date: {start_date}")
+                        break
+                except ValueError:
+                    continue
+            
+            if not start_date:
+                logger.error(f"Could not parse date from: {start_part}")
                 return "", ""
             
-            # Parse the time
-            # For multi-day events, time is often included with the date
-            # Example: "Saturday, January 25, 2025 10:30 PM"
-            time_parts = time_str.strip().split()
-            if len(time_parts) >= 2:
-                time_str = ' '.join(time_parts[:2])  # Take first time as start time
+            # Extract time from the time_str or from the date string if it contains the time
+            time_match = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', time_str or start_part)
+            if time_match:
                 try:
-                    time_obj = datetime.strptime(time_str, '%I:%M %p')
-                    formatted_time = time_obj.strftime('%H:%M:%S')
-                    logger.info(f"Parsed start time: {formatted_time}")
-                    return formatted_date, formatted_time
+                    time_text = time_match.group(1)
+                    time_obj = datetime.strptime(time_text, '%I:%M %p')
+                    logger.info(f"Successfully parsed time: {time_obj}")
+                    return (
+                        start_date.strftime('%Y-%m-%d'),
+                        time_obj.strftime('%H:%M:%S')
+                    )
                 except ValueError as e:
                     logger.error(f"Error parsing time: {str(e)}")
-                    return formatted_date, ""
+                    return start_date.strftime('%Y-%m-%d'), ""
             
-            return formatted_date, ""
+            return start_date.strftime('%Y-%m-%d'), ""
             
         # Handle single-day event format
+        # Example: "Tuesday, January 21, 2025"
         else:
             logger.info("Detected single-day event format")
-            # Remove day of week if present
-            if ',' in date_str:
-                date_str = date_str.split(',', 1)[1].strip()
             
-            # Parse the date
-            try:
-                date_obj = datetime.strptime(date_str, '%B %d, %Y')
-                formatted_date = date_obj.strftime('%Y-%m-%d')
-                logger.info(f"Parsed date: {formatted_date}")
-            except ValueError as e:
-                logger.error(f"Error parsing date: {str(e)}")
+            # Try different date formats
+            date_formats = [
+                '%A, %B %d, %Y',     # Tuesday, January 21, 2025
+                '%B %d, %Y',         # January 21, 2025
+                '%a, %b %d, %Y'      # Tue, Jan 21, 2025
+            ]
+            
+            date_obj = None
+            for fmt in date_formats:
+                try:
+                    # Remove any time information from date string
+                    date_portion = re.match(r'^([^0-9]+,\s*)?([A-Za-z]+\s+\d{1,2},\s*\d{4})', date_str)
+                    if date_portion:
+                        date_text = date_portion.group(2)
+                        date_obj = datetime.strptime(date_text, '%B %d, %Y')
+                        logger.info(f"Successfully parsed date: {date_obj}")
+                        break
+                except ValueError:
+                    continue
+            
+            if not date_obj:
+                logger.error(f"Could not parse date from: {date_str}")
                 return "", ""
             
             # Parse the time
-            # Handle format "12:00 PM  3:00 PM"
-            time_parts = time_str.strip().split()
-            if len(time_parts) >= 2:
-                start_time_str = ' '.join(time_parts[:2])  # Take first time as start time
+            # Handle format "7:00 PM 9:00 PM 19:00 21:00" - take first time
+            time_match = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', time_str)
+            if time_match:
                 try:
-                    time_obj = datetime.strptime(start_time_str, '%I:%M %p')
-                    formatted_time = time_obj.strftime('%H:%M:%S')
-                    logger.info(f"Parsed time: {formatted_time}")
-                    return formatted_date, formatted_time
+                    time_text = time_match.group(1)
+                    time_obj = datetime.strptime(time_text, '%I:%M %p')
+                    logger.info(f"Successfully parsed time: {time_obj}")
+                    return (
+                        date_obj.strftime('%Y-%m-%d'),
+                        time_obj.strftime('%H:%M:%S')
+                    )
                 except ValueError as e:
                     logger.error(f"Error parsing time: {str(e)}")
-                    return formatted_date, ""
+                    return date_obj.strftime('%Y-%m-%d'), ""
             
-            return formatted_date, ""
+            return date_obj.strftime('%Y-%m-%d'), ""
             
     except Exception as e:
         logger.error(f"Error parsing datetime: {str(e)}")
@@ -195,8 +231,15 @@ class GenericCrawl4AIScraper:
                 instruction="""From the events listing page, extract basic event information:
                 1. Title of the event
                 2. URL to the event's detail page
-                3. Date of the event
-                4. Start time
+                3. Date of the event - Look for these formats:
+                   * Full format: "Tuesday, January 21, 2025"
+                   * Multi-day format: "Wed, Jan 22, 2025 9:00 PM to Thu, Jan 23, 2025"
+                   * For multi-day events, extract the first date
+                   * Include the full date string with day of week
+                4. Start time - Look for these formats:
+                   * "7:00 PM" (in 12-hour format)
+                   * "19:00" (in 24-hour format)
+                   * For multiple times, take the first one
                 5. Venue name
                 6. Event image URL if available
                 
@@ -317,8 +360,15 @@ class GenericCrawl4AIScraper:
                 instruction="""From this event detail page, extract complete event information:
                 1. Title of the event
                 2. Full description
-                3. Date
-                4. Start and end times
+                3. Date - Look for these specific formats:
+                   * Full format: "Tuesday, January 21, 2025"
+                   * Multi-day format: "Wed, Jan 22, 2025 9:00 PM to Thu, Jan 23, 2025"
+                   * For multi-day events, extract the first date
+                   * Include the full date string with day of week
+                4. Start and end times - Look for these formats:
+                   * "7:00 PM" (in 12-hour format with AM/PM)
+                   * "19:00" (in 24-hour format)
+                   * For multiple times, first time is start, second is end
                 5. Venue details (name, address, city, state, zip, country)
                 6. Event URL
                 7. Event image URL
@@ -328,6 +378,12 @@ class GenericCrawl4AIScraper:
                 - Venue information (often in sidebars or footer sections)
                 - Date/time information (check for timezone indicators)
                 - Any ticket or pricing information in the description
+                
+                For dates and times:
+                - Look for the date near the top of the event details
+                - The date is often displayed with the day of week
+                - Times may be shown in both 12-hour and 24-hour formats
+                - For multi-day events, use the first date as event_date
                 
                 If any field is not found, leave it blank rather than making assumptions.""",
                 extra_args=extra_args,
@@ -444,6 +500,9 @@ class GenericCrawl4AIScraper:
                                 logger.info(f"Found image URL on detail page: {image_url}")
                             else:
                                 logger.warning("No image URL found on either listing or detail page")
+                                # Provide a default image URL
+                                image_url = "https://placehold.co/600x400?text=No+Image+Available"
+                                logger.info(f"Using default image URL: {image_url}")
 
                         formatted_event = {
                             'title': event_details.get('event_title', ''),
@@ -457,7 +516,7 @@ class GenericCrawl4AIScraper:
                             'venue_zip': event_details.get('event_venue_zip', ''),
                             'venue_country': event_details.get('event_venue_country', ''),
                             'url': event_details.get('event_url', ''),
-                            'image_url': image_url,
+                            'image_url': image_url,  # This will now always have a value
                         }
 
                         logger.info(f"Formatted event: {json.dumps(formatted_event, indent=2)}")
