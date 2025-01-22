@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: socialcal
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn socialcal.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DJANGO_SETTINGS_MODULE
+        value: socialcal.settings.production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: socialcal_db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4
+
+databases:
+  - name: socialcal_db
+    plan: free
+    databaseName: socialcal
+    ipAllowList: [] # only allow internal connections 

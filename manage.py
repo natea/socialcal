@@ -10,7 +10,8 @@ def main():
     load_dotenv()
     
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'socialcal.settings')
+    # Default to development settings
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'socialcal.settings.development')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
