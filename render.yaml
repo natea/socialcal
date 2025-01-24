@@ -2,7 +2,7 @@ services:
   - type: web
     name: socialcal
     runtime: python
-    plan: free
+    plan: standard
     buildCommand: ./build.sh
     startCommand: gunicorn socialcal.wsgi:application
     envVars:
@@ -17,7 +17,7 @@ services:
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
-        value: 4
+        value: 2
       # Email configuration
       - key: RESEND_API_KEY
         sync: false
