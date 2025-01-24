@@ -22,13 +22,37 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
     Returns a tuple of (date, time) strings."""
     logger.info(f"Parsing date: '{date_str}' and time: '{time_str}'")
     
+    if not date_str or not time_str:
+        raise ValueError("Date and time strings cannot be empty")
+    
     try:
         # Try to parse the date first
         current_year = datetime.now().year
-        date_obj = None
         
         # Clean up the date string
         date_str = date_str.strip()
+        
+        # If the date string already includes a year, use that
+        if len(date_str.split('/')[-1]) == 4 or len(date_str.split(',')[-1].strip()) == 4:
+            # Date already has a year, use it as is
+            pass
+        else:
+            # No year in the date, need to determine appropriate year
+            try:
+                # Try parsing with current year
+                if '/' in date_str:
+                    test_date = datetime.strptime(f"{date_str}/{current_year}", "%m/%d/%Y")
+                else:
+                    test_date = datetime.strptime(f"{date_str}, {current_year}", "%B %d, %Y")
+                
+                # If the resulting date is more than 1 month in the past, use next year
+                one_month_ago = datetime.now() - timedelta(days=30)
+                if test_date.date() < one_month_ago.date():
+                    current_year += 1
+                    logger.info(f"Date would be in the past, using next year: {current_year}")
+            except ValueError as e:
+                logger.warning(f"Failed to parse date for year check: {str(e)}")
+                raise ValueError(f"Invalid date format: {date_str}")
         
         # List of formats to try, in order
         date_formats = [
@@ -40,54 +64,33 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
         ]
         
         # Try each format until one works
+        date_obj = None
+        last_error = None
+        
         for fmt, d_str in date_formats:
             try:
                 date_obj = datetime.strptime(d_str, fmt)
-                logger.info(f"Successfully parsed date '{date_str}' using format '{fmt}'")
                 break
-            except ValueError:
+            except ValueError as e:
+                last_error = e
                 continue
         
         if not date_obj:
-            logger.error(f"Could not parse date: {date_str}")
-            return "", ""
+            raise ValueError(f"Could not parse date: {date_str}")
         
-        # Format date for Django
-        formatted_date = date_obj.strftime("%Y-%m-%d")
-        logger.info(f"Formatted date: {formatted_date}")
+        # Now parse the time
+        try:
+            # Convert 12-hour time to 24-hour time
+            time_obj = datetime.strptime(time_str, "%I:%M %p")
+            time_str_24h = time_obj.strftime("%H:%M:%S")
+        except ValueError as e:
+            raise ValueError(f"Invalid time format: {time_str}")
         
-        # Parse the time
-        # Clean up the time string
-        time_str = time_str.replace('.', '').strip()
+        return date_obj.strftime("%Y-%m-%d"), time_str_24h
         
-        # List of time formats to try, in order
-        time_formats = [
-            ("%I:%M %p", time_str),           # HH:MM AM/PM
-            ("%H:%M", time_str),              # HH:MM (24-hour)
-            ("%I %p", time_str),              # H AM/PM
-            ("%m/%d/%Y %I:%M %p", time_str)   # MM/DD/YYYY HH:MM AM/PM (combined)
-        ]
-        
-        # Try each format until one works
-        formatted_time = ""
-        for fmt, t_str in time_formats:
-            try:
-                time_obj = datetime.strptime(t_str, fmt)
-                formatted_time = time_obj.strftime("%H:%M:%S")
-                logger.info(f"Successfully parsed time '{time_str}' using format '{fmt}'")
-                break
-            except ValueError:
-                continue
-        
-        if not formatted_time:
-            logger.error(f"Could not parse time: {time_str}")
-            return formatted_date, ""  # Return date even if time parsing fails
-        
-        logger.info(f"Formatted time: {formatted_time}")
-        return formatted_date, formatted_time
     except Exception as e:
-        logger.error(f"Error parsing datetime: {str(e)}")
-        return "", ""
+        logger.error(f"Error parsing date/time: {str(e)}")
+        raise ValueError(f"Invalid date/time format: {str(e)}")
 
 class EventModel(BaseModel):
     event_title: str = Field(..., description="Title of the event.")
@@ -133,14 +136,18 @@ class GenericCrawl4AIScraper:
                 instruction="""From the crawled content, carefully extract all events. For each event, you must find:
                 1. Title of the event
                 2. Full description
-                3. Date
+                3. Date - IMPORTANT: All dates should be for the current year. If no year is specified in the event listing, assume current year.
                 4. Start and end times
                 5. Venue details (name, address, city, state, zip, country)
                 6. Event URL (the direct link to the event page)
                 7. Event image URL - Look for <img> tags and their 'src' attributes, especially in event cards or promotional sections.
                    The image URL should be the full URL path, not a relative path.
                 
-                Pay special attention to extracting the image URLs - they are critical.
+                Pay special attention to:
+                - Dates: Always return dates in YYYY-MM-DD format with the year 2025
+                - Times: Return in HH:MM AM/PM format
+                - Image URLs: Must be full URL paths, not relative paths
+                
                 If any field is not found, leave it blank rather than making assumptions.
                 Process all events found on the page, do not skip any.""",
                 extra_args=extra_args,

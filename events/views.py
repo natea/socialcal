@@ -158,7 +158,7 @@ def event_import(request):
                                 job = scraping_jobs[job_id]
                                 
                                 try:
-                                    # Run the async scraper in a new event loop
+                                    # Use only the Crawl4AI scraper
                                     loop = asyncio.new_event_loop()
                                     asyncio.set_event_loop(loop)
                                     events_data = loop.run_until_complete(scrape_crawl4ai_events(source_url))
@@ -172,7 +172,25 @@ def event_import(request):
                                         for event_data in events_data:
                                             try:
                                                 logger.info(f"Processing event: {event_data.get('title')}")
-                                                # Create and save the event
+                                                
+                                                # Check if event already exists
+                                                title = event_data.get('title', '')
+                                                start_time = event_data.get('start_time')
+                                                venue_name = event_data.get('venue_name', '')
+                                                
+                                                # Try to find an existing event with same title, date and venue
+                                                existing_event = Event.objects.filter(
+                                                    user=job['user'],
+                                                    title=title,
+                                                    start_time=start_time,
+                                                    venue_name=venue_name
+                                                ).first()
+                                                
+                                                if existing_event:
+                                                    logger.info(f"Event already exists: {title} at {venue_name}")
+                                                    continue
+                                                
+                                                # Create and save the event if it doesn't exist
                                                 event = Event(user=job['user'])
                                                 for field, value in event_data.items():
                                                     if hasattr(event, field):
@@ -183,7 +201,13 @@ def event_import(request):
                                                 event.save()
                                                 logger.info(f"Successfully saved event: {event.title}")
                                                 
-                                                processed_events.append(event_data)
+                                                # Only append the minimal data needed for display
+                                                processed_events.append({
+                                                    'id': event.id,
+                                                    'title': event.title,
+                                                    'start_time': event.start_time,
+                                                    'venue_name': event.venue_name
+                                                })
                                             except Exception as e:
                                                 logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
                                         
@@ -231,11 +255,9 @@ def event_import(request):
                             'log': log_stream.getvalue()
                         })
                 else:
-                    # Synchronous scraping
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    events_data = loop.run_until_complete(scrape_crawl4ai_events(source_url))
-                    loop.close()
+                    # Synchronous scraping (we'll remove this since we always use async)
+                    messages.error(request, 'Please enable async scraping for better performance.')
+                    return redirect('events:import')
             elif scraper_type == 'generic':
                 # Use Generic scraper
                 source_url = request.POST.get('source_url')
@@ -292,14 +314,43 @@ def event_import(request):
                                         processed_events = []
                                         for event_data in events_data:
                                             try:
-                                                # Create and save the event
+                                                logger.info(f"Processing event: {event_data.get('title')}")
+                                                
+                                                # Check if event already exists
+                                                title = event_data.get('title', '')
+                                                start_time = event_data.get('start_time')
+                                                venue_name = event_data.get('venue_name', '')
+                                                
+                                                # Try to find an existing event with same title, date and venue
+                                                existing_event = Event.objects.filter(
+                                                    user=job['user'],
+                                                    title=title,
+                                                    start_time=start_time,
+                                                    venue_name=venue_name
+                                                ).first()
+                                                
+                                                if existing_event:
+                                                    logger.info(f"Event already exists: {title} at {venue_name}")
+                                                    continue
+                                                
+                                                # Create and save the event if it doesn't exist
                                                 event = Event(user=job['user'])
+                                                
+                                                # Update fields from event_data
                                                 for field, value in event_data.items():
                                                     if hasattr(event, field):
                                                         setattr(event, field, value)
+                                                
+                                                # Save the event
                                                 event.save()
                                                 
-                                                processed_events.append(event_data)
+                                                # Only append the minimal data needed for display
+                                                processed_events.append({
+                                                    'id': event.id,
+                                                    'title': event.title,
+                                                    'start_time': event.start_time,
+                                                    'venue_name': event.venue_name
+                                                })
                                                 logger.info(f"Processed event: {event_data.get('title')}")
                                             except Exception as e:
                                                 logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
@@ -351,15 +402,9 @@ def event_import(request):
                             'log': log_stream.getvalue()
                         })
                 else:
-                    # Synchronous scraping
-                    events_data = scraper.extract_events(source_url)
-                    
-                    # Get the log output
-                    log_output = log_stream.getvalue()
-                    
-                    if not events_data:
-                        messages.warning(request, f'No events found at the provided URL. Debug output:\n{log_output}')
-                        return redirect('events:import')
+                    # Synchronous scraping (we'll remove this since we always use async)
+                    messages.error(request, 'Please enable async scraping for better performance.')
+                    return redirect('events:import')
             else:
                 if is_async:
                     return JsonResponse({

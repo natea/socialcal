@@ -6,110 +6,34 @@
 <div class="card">
     <div class="card-body">
         <h2>Import Events</h2>
-        <ul class="nav nav-tabs mb-3" id="importTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="generic-tab" data-bs-toggle="tab" data-bs-target="#generic" type="button" role="tab">
-                    Generic Scraper
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="regattabar-tab" data-bs-toggle="tab" data-bs-target="#regattabar" type="button" role="tab">
-                    RegattaBar
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="berklee-tab" data-bs-toggle="tab" data-bs-target="#berklee" type="button" role="tab">
-                    Berklee
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="crawl4ai-tab" data-bs-toggle="tab" data-bs-target="#crawl4ai" type="button" role="tab">
-                    Crawl4AI
-                </button>
-            </li>
-        </ul>
-        
-        <div class="tab-content" id="importTabContent">
-            <!-- Generic Scraper Tab -->
-            <div class="tab-pane fade show active" id="generic" role="tabpanel">
-                <form method="post" id="genericForm" class="import-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="scraper_type" value="generic">
-                    <input type="hidden" name="async" value="true">
-                    <div class="mb-3">
-                        <label for="source_url" class="form-label">Event Page URL</label>
-                        <input type="url" class="form-control" id="source_url" name="source_url" required
-                               placeholder="https://example.com/events">
-                        <div class="form-text">Enter the URL of the page containing the events you want to import.</div>
-                    </div>
-                    <button type="submit" class="btn btn-primary import-button">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="button-text">Import Events</span>
-                    </button>
-                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
-
-                <!-- Progress Section -->
-                <div id="importProgress" class="mt-4 d-none">
-                    <h4>Import Progress</h4>
-                    <div class="progress mb-3">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                    </div>
-                    <div id="eventsList" class="list-group">
-                        <!-- Events will be added here dynamically -->
-                    </div>
-                    <div id="logOutput" class="mt-3">
-                        <pre class="bg-light p-3 rounded"><code></code></pre>
-                    </div>
-                </div>
+        <form method="post" id="eventScraperForm" class="import-form">
+            {% csrf_token %}
+            <input type="hidden" name="scraper_type" value="crawl4ai">
+            <input type="hidden" name="async" value="true">
+            <div class="mb-3">
+                <label for="source_url" class="form-label">Event Page URL</label>
+                <input type="url" class="form-control" id="source_url" name="source_url" required
+                       placeholder="https://example.com/events">
+                <div class="form-text">Enter the URL of the page containing the events you want to import. The AI will automatically extract event details.</div>
             </div>
+            <button type="submit" class="btn btn-primary import-button">
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                <span class="button-text">Import Events</span>
+            </button>
+            <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
 
-            <!-- RegattaBar Tab -->
-            <div class="tab-pane fade" id="regattabar" role="tabpanel">
-                <form method="post" id="regattabarForm" class="import-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="scraper_type" value="regattabar">
-                    <p class="mb-3">Import upcoming events from RegattaBar in Cambridge, MA.</p>
-                    <button type="submit" class="btn btn-primary import-button">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="button-text">Import RegattaBar Events</span>
-                    </button>
-                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
+        <!-- Progress Section -->
+        <div id="importProgress" class="mt-4 d-none">
+            <h4>Import Progress</h4>
+            <div class="progress mb-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
             </div>
-
-            <!-- Berklee Tab -->
-            <div class="tab-pane fade" id="berklee" role="tabpanel">
-                <form method="post" id="berkleeForm" class="import-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="scraper_type" value="berklee">
-                    <p class="mb-3">Import upcoming events from Berklee Performance Center in Boston, MA.</p>
-                    <button type="submit" class="btn btn-primary import-button">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="button-text">Import Berklee Events</span>
-                    </button>
-                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
+            <div id="eventsList" class="list-group">
+                <!-- Events will be added here dynamically -->
             </div>
-
-            <!-- Crawl4AI Tab -->
-            <div class="tab-pane fade" id="crawl4ai" role="tabpanel">
-                <form method="post" id="crawl4aiForm" class="import-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="scraper_type" value="crawl4ai">
-                    <input type="hidden" name="async" value="true">
-                    <div class="mb-3">
-                        <label for="source_url" class="form-label">Event Page URL</label>
-                        <input type="url" class="form-control" id="source_url" name="source_url" required
-                               placeholder="https://example.com/events">
-                        <div class="form-text">Enter the URL of the page containing the events you want to import. The AI will automatically extract event details.</div>
-                    </div>
-                    <button type="submit" class="btn btn-primary import-button">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="button-text">Import Events</span>
-                    </button>
-                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
+            <div id="logOutput" class="mt-3">
+                <pre class="bg-light p-3 rounded"><code></code></pre>
             </div>
         </div>
     </div>
@@ -161,132 +85,145 @@ function getCookie(name) {
     return cookieValue;
 }
 
-document.querySelectorAll('.import-form').forEach(form => {
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const button = form.querySelector('.import-button');
-        const spinner = button.querySelector('.spinner-border');
-        const buttonText = button.querySelector('.button-text');
-        const progressSection = document.getElementById('importProgress');
-        const eventsList = document.getElementById('eventsList');
-        const logOutput = document.getElementById('logOutput').querySelector('code');
-        
-        // Clear previous results and alerts
-        eventsList.innerHTML = '';
-        logOutput.textContent = '';
-        progressSection.querySelectorAll('.alert').forEach(alert => alert.remove());
-        
-        // Show progress section
-        progressSection.classList.remove('d-none');
-        
-        // Disable button and show spinner
-        button.disabled = true;
-        spinner.classList.remove('d-none');
-        buttonText.textContent = 'Importing...';
+document.querySelector('.import-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const button = this.querySelector('.import-button');
+    const spinner = button.querySelector('.spinner-border');
+    const buttonText = button.querySelector('.button-text');
+    const progressSection = document.getElementById('importProgress');
+    const eventsList = document.getElementById('eventsList');
+    const logOutput = document.getElementById('logOutput').querySelector('code');
+    
+    // Clear previous results and alerts
+    eventsList.innerHTML = '';
+    logOutput.textContent = '';
+    progressSection.querySelectorAll('.alert').forEach(alert => alert.remove());
+    
+    // Show progress section
+    progressSection.classList.remove('d-none');
+    
+    // Disable button and show spinner
+    button.disabled = true;
+    spinner.classList.remove('d-none');
+    buttonText.textContent = 'Importing...';
 
-        try {
-            // Start the scraping job
-            const formData = new FormData(form);
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+        // Start the scraping job
+        const formData = new FormData(this);
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
             }
+        });
 
-            const data = await response.json();
-            
-            // Handle initial response errors
-            if (data.status === 'error') {
-                showError(data.message);
-                if (data.log) {
-                    logOutput.textContent = data.log;
-                    logOutput.parentElement.scrollTop = logOutput.parentElement.scrollHeight;
-                }
-                return;
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Handle initial response errors
+        if (data.status === 'error') {
+            showError(data.message);
+            if (data.log) {
+                logOutput.textContent = data.log;
+                logOutput.parentElement.scrollTop = logOutput.parentElement.scrollHeight;
             }
-            
-            if (data.status === 'started') {
-                // Poll for updates
-                const pollInterval = setInterval(async () => {
-                    try {
-                        // Construct the status URL using the current URL path
-                        const baseUrl = window.location.pathname.replace(/\/import\/?$/, '');
-                        const statusUrl = `${baseUrl}/import/status/${data.job_id}/`;
-                        
-                        const statusResponse = await fetch(statusUrl, {
-                            headers: {
-                                'X-CSRFToken': getCookie('csrftoken')
-                            }
-                        });
-                        
-                        if (!statusResponse.ok) {
-                            throw new Error(`HTTP error! status: ${statusResponse.status}`);
-                        }
-                        
-                        const statusData = await statusResponse.json();
-                        
-                        // Update log
-                        if (statusData.log) {
-                            logOutput.textContent = statusData.log;
-                            logOutput.parentElement.scrollTop = logOutput.parentElement.scrollHeight;
-                        }
-                        
-                        // Update events list
-                        if (statusData.events && statusData.events.length > 0) {
-                            statusData.events.forEach(event => {
-                                if (!document.getElementById(`event-${event.id}`)) {
-                                    const eventElement = document.createElement('div');
-                                    eventElement.id = `event-${event.id}`;
-                                    eventElement.className = 'list-group-item event-item';
-                                    eventElement.innerHTML = `
-                                        <h5 class="mb-1">${event.title || 'Untitled Event'}</h5>
-                                        <p class="mb-1">${event.start_time || 'No time specified'}</p>
-                                        <small>${event.venue_name || 'No venue specified'}</small>
-                                    `;
-                                    eventsList.appendChild(eventElement);
-                                    setTimeout(() => eventElement.classList.add('show'), 10);
-                                }
-                            });
-                        }
-                        
-                        // Check if complete
-                        if (statusData.status === 'complete') {
-                            clearInterval(pollInterval);
-                            resetForm();
-                            
-                            if (statusData.message) {
-                                showSuccess(statusData.message);
-                            }
-                        } else if (statusData.status === 'error') {
-                            clearInterval(pollInterval);
-                            resetForm();
-                            showError(statusData.message || 'An error occurred during import');
-                        }
-                    } catch (error) {
-                        console.error('Error polling status:', error);
+            return;
+        }
+        
+        if (data.status === 'started') {
+            // Poll for updates
+            let attempts = 0;
+            const maxAttempts = 120; // 2 minutes maximum polling time
+            const pollInterval = setInterval(async () => {
+                try {
+                    attempts++;
+                    if (attempts >= maxAttempts) {
                         clearInterval(pollInterval);
                         resetForm();
-                        showError('Error checking import status: ' + error.message);
+                        showError('Import timed out after 2 minutes. Please check the events list or try again.');
+                        return;
                     }
-                }, 1000);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            resetForm();
-            showError('Error starting import: ' + error.message);
+
+                    // Construct the status URL using the current URL path
+                    const baseUrl = window.location.pathname.replace(/\/import\/?$/, '');
+                    const statusUrl = `${baseUrl}/import/status/${data.job_id}/`;
+                    
+                    const statusResponse = await fetch(statusUrl, {
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+                    
+                    if (!statusResponse.ok) {
+                        throw new Error(`HTTP error! status: ${statusResponse.status}`);
+                    }
+                    
+                    const statusData = await statusResponse.json();
+                    
+                    // Update log
+                    if (statusData.log) {
+                        logOutput.textContent = statusData.log;
+                        logOutput.parentElement.scrollTop = logOutput.parentElement.scrollHeight;
+                    }
+                    
+                    // Update events list
+                    if (statusData.events && statusData.events.length > 0) {
+                        statusData.events.forEach(event => {
+                            if (!document.getElementById(`event-${event.id}`)) {
+                                const eventElement = document.createElement('div');
+                                eventElement.id = `event-${event.id}`;
+                                eventElement.className = 'list-group-item event-item';
+                                eventElement.innerHTML = `
+                                    <h5 class="mb-1">${event.title || 'Untitled Event'}</h5>
+                                    <p class="mb-1">${event.start_time || 'No time specified'}</p>
+                                    <small>${event.venue_name || 'No venue specified'}</small>
+                                `;
+                                eventsList.appendChild(eventElement);
+                                setTimeout(() => eventElement.classList.add('show'), 10);
+                            }
+                        });
+                    }
+                    
+                    // Check if complete
+                    if (statusData.status === 'complete' || statusData.status === 'error') {
+                        clearInterval(pollInterval);
+                        resetForm();
+                        
+                        if (statusData.status === 'complete' && statusData.message) {
+                            showSuccess(statusData.message);
+                        } else if (statusData.status === 'error') {
+                            showError(statusData.message || 'An error occurred during import');
+                        }
+                    } else if (!['running', 'started'].includes(statusData.status)) {
+                        // Handle unexpected status
+                        clearInterval(pollInterval);
+                        resetForm();
+                        showError(`Unexpected import status: ${statusData.status}`);
+                    }
+                } catch (error) {
+                    console.error('Error polling status:', error);
+                    clearInterval(pollInterval);
+                    resetForm();
+                    showError('Error checking import status: ' + error.message);
+                }
+            }, 1000);
         }
-    });
+    } catch (error) {
+        console.error('Error:', error);
+        resetForm();
+        showError('Error starting import: ' + error.message);
+    }
 });
 
 function showError(message) {
     const progressSection = document.getElementById('importProgress');
+    // Clear any existing alerts first
+    progressSection.querySelectorAll('.alert').forEach(alert => alert.remove());
     const alert = document.createElement('div');
     alert.className = 'alert alert-danger mt-3';
     alert.textContent = message;
@@ -295,6 +232,8 @@ function showError(message) {
 
 function showSuccess(message) {
     const progressSection = document.getElementById('importProgress');
+    // Clear any existing alerts first
+    progressSection.querySelectorAll('.alert').forEach(alert => alert.remove());
     const alert = document.createElement('div');
     alert.className = 'alert alert-success mt-3';
     alert.textContent = message;
@@ -312,4 +251,4 @@ function resetForm() {
 }
 </script>
 {% endblock %}
-{% endblock %} 
+{% endblock %}
