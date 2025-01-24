@@ -3,7 +3,10 @@ services:
     name: socialcal
     runtime: docker
     plan: standard
+    healthCheckPath: /admin/login/
     envVars:
+      - key: PORT
+        value: 8000
       - key: DJANGO_SETTINGS_MODULE
         value: socialcal.settings.production
       - key: DATABASE_URL

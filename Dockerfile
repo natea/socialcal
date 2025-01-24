@@ -62,7 +62,18 @@ RUN echo '#!/bin/bash\n\
 export PATH="/home/app/.local/bin:$PATH"\n\
 python manage.py collectstatic --no-input\n\
 python manage.py migrate\n\
-exec gunicorn socialcal.wsgi:application --bind=0.0.0.0:8000\n'\
+exec gunicorn socialcal.wsgi:application \
+    --bind=0.0.0.0:$PORT \
+    --workers=2 \
+    --threads=2 \
+    --worker-class=gthread \
+    --worker-tmp-dir=/dev/shm \
+    --timeout=30 \
+    --keep-alive=2 \
+    --log-file=- \
+    --access-logfile=- \
+    --error-logfile=- \
+    --log-level=info\n'\
 > /app/start.sh && chmod +x /app/start.sh
 
 # Run the startup script
