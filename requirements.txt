@@ -51,3 +51,5 @@ google-generativeai
 
 # New dependencies
 pytz==2024.1
+
+seleniumbase

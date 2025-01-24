@@ -43,4 +43,7 @@ env/
 .vscode/
 *.swp
 *.swo
-*~ 
+*~  
+
+# MacOS
+.DS_Store
