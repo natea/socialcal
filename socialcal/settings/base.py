@@ -13,6 +13,14 @@ def get_env_variable(var_name):
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# Static files configuration
+STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Only add STATICFILES_DIRS if the directory exists
+if (BASE_DIR / 'static').exists():
+    STATICFILES_DIRS = [BASE_DIR / 'static']
+
 INSTALLED_APPS = [
     # Django built-in apps
     'django.contrib.admin',
@@ -89,10 +97,6 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'America/New_York'
 USE_I18N = True
 USE_TZ = True
-
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

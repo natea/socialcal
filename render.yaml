@@ -35,7 +35,6 @@ services:
       - key: OLOSTEP_API_KEY
         sync: false
 
+databases:
   - name: socialcal_db
-    plan: free
-    databaseName: socialcal
-    ipAllowList: [] # only allow internal connections 
+    ipAllowList: [] 
