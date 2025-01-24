@@ -8,93 +8,21 @@
         <h2>Import Events</h2>
         <ul class="nav nav-tabs mb-3" id="importTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="generic-tab" data-bs-toggle="tab" data-bs-target="#generic" type="button" role="tab">
-                    Generic Scraper
+                <button class="nav-link active" id="event-scraper-tab" data-bs-toggle="tab" data-bs-target="#event-scraper" type="button" role="tab">
+                    Event Scraper
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="regattabar-tab" data-bs-toggle="tab" data-bs-target="#regattabar" type="button" role="tab">
-                    RegattaBar
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="berklee-tab" data-bs-toggle="tab" data-bs-target="#berklee" type="button" role="tab">
-                    Berklee
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="crawl4ai-tab" data-bs-toggle="tab" data-bs-target="#crawl4ai" type="button" role="tab">
-                    Crawl4AI
+                <button class="nav-link" id="ical-tab" data-bs-toggle="tab" data-bs-target="#ical" type="button" role="tab">
+                    iCal Import
                 </button>
             </li>
         </ul>
         
         <div class="tab-content" id="importTabContent">
-            <!-- Generic Scraper Tab -->
-            <div class="tab-pane fade show active" id="generic" role="tabpanel">
-                <form method="post" id="genericForm" class="import-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="scraper_type" value="generic">
-                    <input type="hidden" name="async" value="true">
-                    <div class="mb-3">
-                        <label for="source_url" class="form-label">Event Page URL</label>
-                        <input type="url" class="form-control" id="source_url" name="source_url" required
-                               placeholder="https://example.com/events">
-                        <div class="form-text">Enter the URL of the page containing the events you want to import.</div>
-                    </div>
-                    <button type="submit" class="btn btn-primary import-button">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="button-text">Import Events</span>
-                    </button>
-                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
-
-                <!-- Progress Section -->
-                <div id="importProgress" class="mt-4 d-none">
-                    <h4>Import Progress</h4>
-                    <div class="progress mb-3">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                    </div>
-                    <div id="eventsList" class="list-group">
-                        <!-- Events will be added here dynamically -->
-                    </div>
-                    <div id="logOutput" class="mt-3">
-                        <pre class="bg-light p-3 rounded"><code></code></pre>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RegattaBar Tab -->
-            <div class="tab-pane fade" id="regattabar" role="tabpanel">
-                <form method="post" id="regattabarForm" class="import-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="scraper_type" value="regattabar">
-                    <p class="mb-3">Import upcoming events from RegattaBar in Cambridge, MA.</p>
-                    <button type="submit" class="btn btn-primary import-button">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="button-text">Import RegattaBar Events</span>
-                    </button>
-                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
-            </div>
-
-            <!-- Berklee Tab -->
-            <div class="tab-pane fade" id="berklee" role="tabpanel">
-                <form method="post" id="berkleeForm" class="import-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="scraper_type" value="berklee">
-                    <p class="mb-3">Import upcoming events from Berklee Performance Center in Boston, MA.</p>
-                    <button type="submit" class="btn btn-primary import-button">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="button-text">Import Berklee Events</span>
-                    </button>
-                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
-            </div>
-
-            <!-- Crawl4AI Tab -->
-            <div class="tab-pane fade" id="crawl4ai" role="tabpanel">
-                <form method="post" id="crawl4aiForm" class="import-form">
+            <!-- Event Scraper Tab -->
+            <div class="tab-pane fade show active" id="event-scraper" role="tabpanel">
+                <form method="post" id="eventScraperForm" class="import-form">
                     {% csrf_token %}
                     <input type="hidden" name="scraper_type" value="crawl4ai">
                     <input type="hidden" name="async" value="true">
@@ -110,6 +38,46 @@
                     </button>
                     <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
                 </form>
+            </div>
+
+            <!-- iCal Import Tab -->
+            <div class="tab-pane fade" id="ical" role="tabpanel">
+                <form method="post" id="icalForm" class="import-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="scraper_type" value="ical">
+                    <input type="hidden" name="async" value="true">
+                    <div class="mb-3">
+                        <label for="ical_url" class="form-label">Calendar URL</label>
+                        <input type="url" class="form-control" id="ical_url" name="source_url" required
+                               placeholder="https://example.com/events/calendar.ics">
+                        <div class="form-text">
+                            Enter either:
+                            <ul class="mt-2">
+                                <li>A direct iCal/webcal URL (ends in .ics or webcal://)</li>
+                                <li>A webpage URL containing a calendar feed (the scraper will find the calendar link automatically)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary import-button">
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span class="button-text">Import Calendar</span>
+                    </button>
+                    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div id="importProgress" class="mt-4 d-none">
+            <h4>Import Progress</h4>
+            <div class="progress mb-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+            <div id="eventsList" class="list-group">
+                <!-- Events will be added here dynamically -->
+            </div>
+            <div id="logOutput" class="mt-3">
+                <pre class="bg-light p-3 rounded"><code></code></pre>
             </div>
         </div>
     </div>
@@ -139,6 +107,11 @@
 
     .event-item.show {
         opacity: 1;
+    }
+
+    .form-text ul {
+        padding-left: 1.5rem;
+        margin-bottom: 0;
     }
 </style>
 {% endblock %}
@@ -187,8 +160,8 @@ document.querySelectorAll('.import-form').forEach(form => {
 
         try {
             // Start the scraping job
-            const formData = new FormData(form);
-            const response = await fetch(form.action, {
+            const formData = new FormData(this);
+            const response = await fetch(this.action, {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -214,8 +187,18 @@ document.querySelectorAll('.import-form').forEach(form => {
             
             if (data.status === 'started') {
                 // Poll for updates
+                let attempts = 0;
+                const maxAttempts = 120; // 2 minutes maximum polling time
                 const pollInterval = setInterval(async () => {
                     try {
+                        attempts++;
+                        if (attempts >= maxAttempts) {
+                            clearInterval(pollInterval);
+                            resetForm();
+                            showError('Import timed out after 2 minutes. Please check the events list or try again.');
+                            return;
+                        }
+
                         // Construct the status URL using the current URL path
                         const baseUrl = window.location.pathname.replace(/\/import\/?$/, '');
                         const statusUrl = `${baseUrl}/import/status/${data.job_id}/`;
@@ -257,17 +240,20 @@ document.querySelectorAll('.import-form').forEach(form => {
                         }
                         
                         // Check if complete
-                        if (statusData.status === 'complete') {
+                        if (statusData.status === 'complete' || statusData.status === 'error') {
                             clearInterval(pollInterval);
                             resetForm();
                             
-                            if (statusData.message) {
+                            if (statusData.status === 'complete' && statusData.message) {
                                 showSuccess(statusData.message);
+                            } else if (statusData.status === 'error') {
+                                showError(statusData.message || 'An error occurred during import');
                             }
-                        } else if (statusData.status === 'error') {
+                        } else if (!['running', 'started'].includes(statusData.status)) {
+                            // Handle unexpected status
                             clearInterval(pollInterval);
                             resetForm();
-                            showError(statusData.message || 'An error occurred during import');
+                            showError(`Unexpected import status: ${statusData.status}`);
                         }
                     } catch (error) {
                         console.error('Error polling status:', error);
@@ -287,6 +273,8 @@ document.querySelectorAll('.import-form').forEach(form => {
 
 function showError(message) {
     const progressSection = document.getElementById('importProgress');
+    // Clear any existing alerts first
+    progressSection.querySelectorAll('.alert').forEach(alert => alert.remove());
     const alert = document.createElement('div');
     alert.className = 'alert alert-danger mt-3';
     alert.textContent = message;
@@ -295,6 +283,8 @@ function showError(message) {
 
 function showSuccess(message) {
     const progressSection = document.getElementById('importProgress');
+    // Clear any existing alerts first
+    progressSection.querySelectorAll('.alert').forEach(alert => alert.remove());
     const alert = document.createElement('div');
     alert.className = 'alert alert-success mt-3';
     alert.textContent = message;
@@ -302,14 +292,13 @@ function showSuccess(message) {
 }
 
 function resetForm() {
-    const button = document.querySelector('.import-button');
-    const spinner = button.querySelector('.spinner-border');
-    const buttonText = button.querySelector('.button-text');
-    
-    button.disabled = false;
-    spinner.classList.add('d-none');
-    buttonText.textContent = 'Import Events';
+    const buttons = document.querySelectorAll('.import-button');
+    buttons.forEach(button => {
+        button.disabled = false;
+        button.querySelector('.spinner-border').classList.add('d-none');
+        button.querySelector('.button-text').textContent = 'Import Events';
+    });
 }
 </script>
 {% endblock %}
-{% endblock %} 
+{% endblock %}

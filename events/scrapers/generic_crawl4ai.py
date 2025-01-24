@@ -13,6 +13,7 @@ import re
 import argparse
 import sys
 from urllib.parse import urlparse, urljoin
+from events.utils.time_parser import format_event_datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -95,44 +96,49 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
             # Try different date formats
             date_formats = [
                 '%A, %B %d, %Y',     # Tuesday, January 21, 2025
+                '%a, %b %d, %Y',     # Tue, Jan 21, 2025
                 '%B %d, %Y',         # January 21, 2025
-                '%a, %b %d, %Y'      # Tue, Jan 21, 2025
+                '%Y-%m-%d',          # 2025-01-21
+                '%m/%d/%Y'           # 01/21/2025
             ]
             
-            date_obj = None
+            parsed_date = None
             for fmt in date_formats:
                 try:
-                    # Remove any time information from date string
-                    date_portion = re.match(r'^([^0-9]+,\s*)?([A-Za-z]+\s+\d{1,2},\s*\d{4})', date_str)
-                    if date_portion:
-                        date_text = date_portion.group(2)
-                        date_obj = datetime.strptime(date_text, '%B %d, %Y')
-                        logger.info(f"Successfully parsed date: {date_obj}")
-                        break
+                    parsed_date = datetime.strptime(date_str, fmt)
+                    logger.info(f"Successfully parsed date with format {fmt}: {parsed_date}")
+                    break
                 except ValueError:
                     continue
             
-            if not date_obj:
+            if not parsed_date:
                 logger.error(f"Could not parse date from: {date_str}")
                 return "", ""
             
-            # Parse the time
-            # Handle format "7:00 PM 9:00 PM 19:00 21:00" - take first time
-            time_match = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', time_str)
-            if time_match:
+            # Parse time if provided
+            if time_str:
                 try:
-                    time_text = time_match.group(1)
-                    time_obj = datetime.strptime(time_text, '%I:%M %p')
+                    # Try to parse time in 12-hour format
+                    time_obj = datetime.strptime(time_str, '%I:%M %p')
                     logger.info(f"Successfully parsed time: {time_obj}")
                     return (
-                        date_obj.strftime('%Y-%m-%d'),
+                        parsed_date.strftime('%Y-%m-%d'),
                         time_obj.strftime('%H:%M:%S')
                     )
                 except ValueError as e:
-                    logger.error(f"Error parsing time: {str(e)}")
-                    return date_obj.strftime('%Y-%m-%d'), ""
+                    try:
+                        # Try to parse time in 24-hour format
+                        time_obj = datetime.strptime(time_str, '%H:%M')
+                        logger.info(f"Successfully parsed time: {time_obj}")
+                        return (
+                            parsed_date.strftime('%Y-%m-%d'),
+                            time_obj.strftime('%H:%M:%S')
+                        )
+                    except ValueError as e:
+                        logger.error(f"Error parsing time: {str(e)}")
+                        return parsed_date.strftime('%Y-%m-%d'), ""
             
-            return date_obj.strftime('%Y-%m-%d'), ""
+            return parsed_date.strftime('%Y-%m-%d'), ""
             
     except Exception as e:
         logger.error(f"Error parsing datetime: {str(e)}")
@@ -146,20 +152,20 @@ class EventListingModel(BaseModel):
     event_venue: str = Field(..., description="Venue of the event.")
     event_image_url: str = Field(None, description="Image URL of the event.")
 
-class EventDetailModel(BaseModel):
+class EventModel(BaseModel):
     event_title: str = Field(..., description="Title of the event.")
     event_description: str = Field(..., description="Description of the event.")
     event_date: str = Field(..., description="Date of the event (YYYY-MM-DD or MM/DD/YYYY).")
     event_start_time: str = Field(..., description="Start time of the event (HH:MM AM/PM).")
     event_end_time: str = Field(..., description="End time of the event (HH:MM AM/PM).")
-    event_venue: str = Field(..., description="Venue of the event.")
-    event_venue_address: str = Field(..., description="Address of the venue.")
-    event_venue_city: str = Field(..., description="City of the venue.")
-    event_venue_state: str = Field(..., description="State of the venue.")
-    event_venue_zip: str = Field(..., description="Zip code of the venue.")
-    event_venue_country: str = Field(..., description="Country of the venue.")
-    event_url: str = Field(..., description="URL of the event.")
-    event_image_url: str = Field(..., description="Image URL of the event.")
+    event_venue_name: str = Field(..., description="Name of the venue.")
+    event_venue_address: str = Field(None, description="Address of the venue.")
+    event_venue_city: str = Field(None, description="City of the venue.")
+    event_venue_state: str = Field(None, description="State of the venue.")
+    event_venue_zip: str = Field(None, description="ZIP code of the venue.")
+    event_venue_country: str = Field(None, description="Country of the venue.")
+    event_url: str = Field(None, description="URL of the event detail page.")
+    event_image_url: str = Field(None, description="Image URL of the event.")
 
 class GenericCrawl4AIScraper:
     def __init__(self, api_token: str = None):
@@ -355,7 +361,7 @@ class GenericCrawl4AIScraper:
             extraction_strategy=LLMExtractionStrategy(
                 provider="openai/gpt-4o-mini",
                 api_token=self.api_token,
-                schema=EventDetailModel.model_json_schema(),
+                schema=EventModel.model_json_schema(),
                 extraction_type="schema",
                 instruction="""From this event detail page, extract complete event information:
                 1. Title of the event
@@ -415,7 +421,7 @@ class GenericCrawl4AIScraper:
                 logger.info(f"- Date: {event_data.get('event_date', 'N/A')}")
                 logger.info(f"- Start Time: {event_data.get('event_start_time', 'N/A')}")
                 logger.info(f"- End Time: {event_data.get('event_end_time', 'N/A')}")
-                logger.info(f"- Venue: {event_data.get('event_venue', 'N/A')}")
+                logger.info(f"- Venue: {event_data.get('event_venue_name', 'N/A')}")
                 logger.info(f"- Address: {event_data.get('event_venue_address', 'N/A')}")
                 logger.info(f"- City: {event_data.get('event_venue_city', 'N/A')}")
                 logger.info(f"- State: {event_data.get('event_venue_state', 'N/A')}")
@@ -457,66 +463,26 @@ class GenericCrawl4AIScraper:
                     
                     # Process the event details
                     try:
-                        # Parse date and time
-                        date, start_time = parse_datetime(
+                        # Use the new time parser utility
+                        start_datetime, end_datetime = format_event_datetime(
                             event_details.get('event_date', ''),
-                            event_details.get('event_start_time', '')
-                        )
-                        
-                        # Parse end time if available
-                        _, end_time = parse_datetime(
-                            event_details.get('event_date', ''),
+                            event_details.get('event_start_time', ''),
                             event_details.get('event_end_time', '')
-                        ) if event_details.get('event_end_time') else ("", "")
-
-                        # Combine date and time for Django format with timezone
-                        tz = pytz.timezone('America/New_York')
-                        start_datetime = None
-                        end_datetime = None
-                        
-                        if date and start_time:
-                            try:
-                                dt = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                                start_dt = tz.localize(dt)
-                                start_datetime = start_dt.strftime("%Y-%m-%d %H:%M:%S%z")
-                                
-                                if not end_time:
-                                    end_dt = start_dt + timedelta(hours=2)
-                                    end_datetime = end_dt.strftime("%Y-%m-%d %H:%M:%S%z")
-                                else:
-                                    dt = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %H:%M:%S")
-                                    end_dt = tz.localize(dt)
-                                    end_datetime = end_dt.strftime("%Y-%m-%d %H:%M:%S%z")
-                            except Exception as e:
-                                logger.error(f"Error creating datetime: {str(e)}")
-
-                        # Handle image URL with fallback logic
-                        image_url = listing.get('event_image_url')  # Try listing page image first
-                        if not image_url:
-                            logger.info("No image URL from listing page, trying detail page...")
-                            detail_image_url = event_details.get('event_image_url')
-                            if detail_image_url:
-                                image_url = self.normalize_url(event_url, detail_image_url)
-                                logger.info(f"Found image URL on detail page: {image_url}")
-                            else:
-                                logger.warning("No image URL found on either listing or detail page")
-                                # Provide a default image URL
-                                image_url = "https://placehold.co/600x400?text=No+Image+Available"
-                                logger.info(f"Using default image URL: {image_url}")
+                        )
 
                         formatted_event = {
                             'title': event_details.get('event_title', ''),
                             'description': event_details.get('event_description', ''),
                             'start_time': start_datetime,
                             'end_time': end_datetime,
-                            'venue_name': event_details.get('event_venue', ''),
+                            'venue_name': event_details.get('event_venue_name', ''),
                             'venue_address': event_details.get('event_venue_address', ''),
                             'venue_city': event_details.get('event_venue_city', ''),
                             'venue_state': event_details.get('event_venue_state', ''),
                             'venue_zip': event_details.get('event_venue_zip', ''),
                             'venue_country': event_details.get('event_venue_country', ''),
                             'url': event_details.get('event_url', ''),
-                            'image_url': image_url,  # This will now always have a value
+                            'image_url': event_details.get('event_image_url', ''),
                         }
 
                         logger.info(f"Formatted event: {json.dumps(formatted_event, indent=2)}")
