@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 import pytz
 import pytest
-from ..scrapers.generic_crawl4ai import parse_datetime, GenericCrawl4AIScraper
+from ..utils.time_parser import parse_datetime
+from ..scrapers.generic_crawl4ai import GenericCrawl4AIScraper
 
 class TestGenericCrawl4AIScraper(unittest.TestCase):
     def setUp(self):
