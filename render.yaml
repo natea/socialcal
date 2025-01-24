@@ -1,13 +1,9 @@
 services:
   - type: web
     name: socialcal
-    runtime: python
+    runtime: docker
     plan: standard
-    buildCommand: ./build.sh
-    startCommand: gunicorn socialcal.wsgi:application
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: DJANGO_SETTINGS_MODULE
         value: socialcal.settings.production
       - key: DATABASE_URL
