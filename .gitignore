@@ -43,3 +43,6 @@ env/
 *.swp
 *.swo
 *~ 
+
+# Windsurf
+.windsurfrules
