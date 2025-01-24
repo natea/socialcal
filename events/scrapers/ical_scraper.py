@@ -107,47 +107,83 @@ class ICalScraper(BaseScraper):
         # Normalize the input URL
         url = self.normalize_url(url)
         
+        all_events = []
+        tried_urls = set()  # Keep track of URLs we've tried to avoid duplicates
+        
         # First check if this is a webpage that might contain calendar links
         if not url.endswith('.ics') and not 'ical=1' in url:
             discovered_urls = self.discover_ical_urls(url)
             logger.info(f"Discovered {len(discovered_urls)} potential calendar URLs: {discovered_urls}")
             
-            # Try each discovered URL until we find a valid one
+            # Filter out non-calendar URLs
+            calendar_urls = []
             for discovered_url in discovered_urls:
                 normalized_url = self.normalize_url(discovered_url)
-                if self.validate_ical_url(normalized_url):
-                    url = normalized_url
-                    self.selected_url = url  # Store the URL that worked
-                    break
-            else:
-                if discovered_urls:
-                    raise Exception(f"Found {len(discovered_urls)} potential calendar URLs, but none contained valid iCal data")
+                if normalized_url in tried_urls:
+                    continue
+                    
+                # Skip URLs that are clearly not calendar feeds
+                if any(pattern in normalized_url.lower() for pattern in [
+                    '.css', '/feed/', 'comments'
+                ]):
+                    continue
+                    
+                # Prioritize URLs that look like calendar feeds
+                if any(pattern in normalized_url.lower() for pattern in [
+                    '.ics', 'ical=1', 'outlook-ical=1', 'tribe_events'
+                ]):
+                    calendar_urls.append(normalized_url)
+                    tried_urls.add(normalized_url)
+            
+            # Try each discovered URL
+            valid_urls_found = False
+            for calendar_url in calendar_urls:
+                try:
+                    if self.validate_ical_url(calendar_url):
+                        valid_urls_found = True
+                        # Fetch events from this URL
+                        response = requests.get(calendar_url, allow_redirects=True)
+                        response.raise_for_status()
+                        cal = Calendar.from_ical(response.text)
+                        events = [c for c in cal.walk() if c.name == "VEVENT"]
+                        all_events.extend(events)
+                        logger.info(f"Found {len(events)} events in calendar at {calendar_url}")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch events from {calendar_url}: {str(e)}")
+                    continue
+            
+            if not valid_urls_found:
+                if calendar_urls:
+                    raise Exception(f"Found {len(calendar_urls)} potential calendar URLs, but none contained valid iCal data")
                 else:
                     raise Exception("No calendar URLs found on the page")
         else:
-            self.selected_url = url
+            # Direct iCal URL provided
+            try:
+                response = requests.get(url, allow_redirects=True)
+                response.raise_for_status()
+                cal = Calendar.from_ical(response.text)
+                events = [c for c in cal.walk() if c.name == "VEVENT"]
+                all_events.extend(events)
+                logger.info(f"Found {len(events)} events in calendar at {url}")
+            except Exception as e:
+                raise Exception(f"Failed to fetch iCal data: {str(e)}")
         
-        try:
-            response = requests.get(url, allow_redirects=True)
-            response.raise_for_status()
-            
-            # Log the final URL after any redirects
-            if response.url != url:
-                logger.info(f"Redirected from {url} to {response.url}")
-            
-            # Parse the iCal data
-            cal = Calendar.from_ical(response.text)
-            events = []
-            
-            for component in cal.walk():
-                if component.name == "VEVENT":
-                    events.append(component)
-            
-            logger.info(f"Found {len(events)} events in calendar")
-            return events
-            
-        except Exception as e:
-            raise Exception(f"Failed to fetch iCal data: {str(e)}")
+        # Remove duplicate events based on UID if present
+        unique_events = {}
+        for event in all_events:
+            uid = str(event.get('uid', ''))
+            if uid:
+                if uid not in unique_events:
+                    unique_events[uid] = event
+            else:
+                # If no UID, use summary and start time as key
+                key = (str(event.get('summary', '')), str(event.get('dtstart', '')))
+                if key not in unique_events:
+                    unique_events[key] = event
+        
+        logger.info(f"Found {len(unique_events)} unique events in total")
+        return list(unique_events.values())
 
     def parse_event(self, component: Dict[str, Any]) -> Dict[str, Any]:
         """Parse iCal event component into our event format"""
