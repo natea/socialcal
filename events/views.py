@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from .models import Event
 from .forms import EventForm
+from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
 from .scrapers.ical_scraper import ICalScraper
 import io
 import logging
