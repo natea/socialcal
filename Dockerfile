@@ -26,10 +26,6 @@ RUN apt-get update && apt-get install -y \
     xvfb \
     wget \
     gnupg \
-    x11vnc \
-    xvfb \
-    fluxbox \
-    x11-xserver-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Chrome
@@ -44,6 +40,10 @@ RUN useradd -m -s /bin/bash app
 RUN mkdir -p /app /app/staticfiles /app/media
 RUN chown -R app:app /app
 
+# Set up X11 directories with proper permissions
+RUN mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix
+
 # Set up app directory
 WORKDIR /app
 
@@ -52,6 +52,7 @@ ENV PATH="/home/app/.local/bin:${PATH}"
 ENV PYTHONPATH="/home/app/.local/lib/python3.11/site-packages:${PYTHONPATH}"
 ENV DISPLAY=:99
 ENV PYTHONUNBUFFERED=1
+ENV DBUS_SESSION_BUS_ADDRESS=/dev/null
 
 # Switch to non-root user
 USER app
@@ -66,8 +67,8 @@ COPY --chown=app:app . .
 # Create a script to run startup commands
 RUN echo '#!/bin/bash\n\
 export PATH="/home/app/.local/bin:$PATH"\n\
-Xvfb :99 -screen 0 1280x1024x24 &\n\
-sleep 1\n\
+Xvfb :99 -ac -screen 0 1280x1024x24 -nolisten tcp &\n\
+sleep 2\n\
 python manage.py collectstatic --no-input\n\
 python manage.py migrate\n\
 exec gunicorn socialcal.wsgi:application \
