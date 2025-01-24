@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 import pytz
 import pytest
 from ..utils.time_parser import parse_datetime
@@ -84,6 +84,7 @@ class TestGenericCrawl4AIScraper(unittest.TestCase):
 
 @pytest.mark.asyncio
 class TestGenericCrawl4AIScraper_Async:
+    @pytest.mark.asyncio
     async def test_extract_events(self):
         """Test the event extraction functionality"""
         # Mock the crawler response
@@ -105,9 +106,10 @@ class TestGenericCrawl4AIScraper_Async:
                 "event_image_url": "http://test.com/image1.jpg"
             }
         ]
-        
+    
         with patch('events.scrapers.generic_crawl4ai.AsyncWebCrawler') as mock_crawler:
-            mock_crawler_instance = MagicMock()
+            # Create an async context manager mock
+            mock_crawler_instance = AsyncMock()
             mock_crawler_instance.arun.return_value = mock_response
             mock_crawler.return_value.__aenter__.return_value = mock_crawler_instance
 
@@ -123,11 +125,12 @@ class TestGenericCrawl4AIScraper_Async:
             assert "20:00:00" in event["start_time"]
             assert event["venue_name"] == "Test Venue"
 
+    @pytest.mark.asyncio
     async def test_extract_events_error_handling(self):
         """Test error handling during event extraction"""
         with patch('events.scrapers.generic_crawl4ai.AsyncWebCrawler') as mock_crawler:
             # Mock crawler to raise an exception
-            mock_crawler_instance = MagicMock()
+            mock_crawler_instance = AsyncMock()
             mock_crawler_instance.arun.side_effect = Exception("Test error")
             mock_crawler.return_value.__aenter__.return_value = mock_crawler_instance
 
