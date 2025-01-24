@@ -39,10 +39,16 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
 RUN useradd -m -s /bin/bash app
 RUN mkdir -p /app /app/staticfiles /app/media
 RUN chown -R app:app /app
-USER app
 
 # Set up app directory
 WORKDIR /app
+
+# Set environment variables
+ENV PATH="/home/app/.local/bin:${PATH}"
+ENV PYTHONPATH="/home/app/.local/lib/python3.11/site-packages:${PYTHONPATH}"
+
+# Switch to non-root user
+USER app
 
 # Install Python dependencies
 COPY --chown=app:app requirements.txt .
@@ -53,9 +59,10 @@ COPY --chown=app:app . .
 
 # Create a script to run startup commands
 RUN echo '#!/bin/bash\n\
+export PATH="/home/app/.local/bin:$PATH"\n\
 python manage.py collectstatic --no-input\n\
 python manage.py migrate\n\
-gunicorn socialcal.wsgi:application\n'\
+exec gunicorn socialcal.wsgi:application --bind=0.0.0.0:8000\n'\
 > /app/start.sh && chmod +x /app/start.sh
 
 # Run the startup script
