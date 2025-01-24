@@ -9,10 +9,11 @@ from .scrapers.regattabar_scraper import scrape_events as scrape_regattabar_even
 from .scrapers.berklee_scraper import scrape_berklee_events
 from .scrapers.generic_scraper import GenericScraper
 from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
+from .scrapers.ical_scraper import ICalScraper
 import io
 import logging
 import json
-from threading import Thread
+from threading import Thread, Lock
 import time
 from requests.exceptions import HTTPError, RequestException
 import traceback
@@ -30,6 +31,8 @@ logger.addHandler(stream_handler)
 
 # Store scraping jobs in memory (in production, use Redis or similar)
 scraping_jobs = {}
+# Lock for preventing multiple scrapes of the same URL
+scraping_locks = {}
 
 def retry_with_backoff(func, max_retries=3, initial_delay=1):
     """Retry a function with exponential backoff."""
@@ -119,6 +122,21 @@ def event_import(request):
     if request.method == 'POST':
         scraper_type = request.POST.get('scraper_type', 'generic')
         is_async = request.POST.get('async', 'false') == 'true'
+        source_url = request.POST.get('source_url')
+        
+        # Create a lock for this URL if it doesn't exist
+        if source_url not in scraping_locks:
+            scraping_locks[source_url] = Lock()
+        
+        # Try to acquire the lock
+        if not scraping_locks[source_url].acquire(blocking=False):
+            if is_async:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Another import is already in progress for this URL'
+                })
+            messages.error(request, 'Another import is already in progress for this URL')
+            return redirect('events:import')
         
         try:
             if scraper_type == 'regattabar':
@@ -127,9 +145,145 @@ def event_import(request):
             elif scraper_type == 'berklee':
                 # Use Berklee scraper
                 events_data = scrape_berklee_events()
+            elif scraper_type == 'ical':
+                # Use iCal scraper
+                if not source_url:
+                    if is_async:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Please provide a URL to scrape.'
+                        })
+                    messages.error(request, 'Please provide a URL to scrape.')
+                    return redirect('events:import')
+
+                if is_async:
+                    try:
+                        # Start async scraping job
+                        job_id = f"scrape_{len(scraping_jobs)}"
+                        scraping_jobs[job_id] = {
+                            'status': 'running',
+                            'events': [],
+                            'log': '',
+                            'source_url': source_url,
+                            'user': request.user,
+                            'lock': scraping_locks[source_url]  # Store the lock with the job
+                        }
+                        
+                        # Start the scraping in a background thread
+                        def scrape_in_background():
+                            try:
+                                # Get the job from the global dict
+                                job = scraping_jobs[job_id]
+                                
+                                try:
+                                    # Initialize iCal scraper
+                                    scraper = ICalScraper()
+                                    
+                                    # Process events
+                                    events_data = scraper.process_events(source_url)
+                                    logger.info("iCal scraping completed successfully")
+                                    
+                                    if events_data:
+                                        processed_events = []
+                                        updated_count = 0
+                                        created_count = 0
+                                        
+                                        for event_data in events_data:
+                                            try:
+                                                logger.info(f"Processing event: {event_data.get('title')}")
+                                                
+                                                # Check for existing event
+                                                existing = Event.objects.filter(
+                                                    user=job['user'],
+                                                    title=event_data.get('title'),
+                                                    start_time=event_data.get('start_time')
+                                                ).first()
+                                                
+                                                if existing:
+                                                    # Update existing event
+                                                    for field, value in event_data.items():
+                                                        if hasattr(existing, field):
+                                                            setattr(existing, field, value)
+                                                    existing.save()
+                                                    updated_count += 1
+                                                    logger.info(f"Updated existing event: {existing.title}")
+                                                else:
+                                                    # Create new event
+                                                    event = Event(user=job['user'])
+                                                    for field, value in event_data.items():
+                                                        if hasattr(event, field):
+                                                            setattr(event, field, value)
+                                                    event.save()
+                                                    created_count += 1
+                                                    logger.info(f"Created new event: {event.title}")
+                                                
+                                                processed_events.append(event_data)
+                                            except Exception as e:
+                                                logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
+                                        
+                                        # Update job status
+                                        job['status'] = 'complete'
+                                        job['events'] = processed_events
+                                        job['message'] = f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
+                                        if scraper.selected_url and scraper.selected_url != source_url:
+                                            job['message'] += f'\nUsed calendar URL: {scraper.selected_url}'
+                                        logger.info(job['message'])
+                                    else:
+                                        logger.warning("No events found in calendar")
+                                        job['status'] = 'complete'
+                                        job['message'] = 'No events found in the calendar'
+                                    
+                                except Exception as e:
+                                    logger.error(f"Error in iCal scraping: {str(e)}\n{traceback.format_exc()}")
+                                    job['status'] = 'error'
+                                    job['message'] = str(e)
+                                
+                            except Exception as e:
+                                logger.error(f"Critical error in background thread: {str(e)}\n{traceback.format_exc()}")
+                                if job_id in scraping_jobs:
+                                    scraping_jobs[job_id].update({
+                                        'status': 'error',
+                                        'message': f'Critical error: {str(e)}',
+                                        'log': log_stream.getvalue()
+                                    })
+                            finally:
+                                # Always release the lock when done
+                                job['lock'].release()
+                                # Update the log
+                                job['log'] = log_stream.getvalue()
+                        
+                        # Start the background thread
+                        thread = Thread(target=scrape_in_background)
+                        thread.daemon = True
+                        thread.start()
+                        
+                        return JsonResponse({
+                            'status': 'started',
+                            'job_id': job_id
+                        })
+                    except Exception as e:
+                        # Release lock if there's an error starting the thread
+                        scraping_locks[source_url].release()
+                        logger.error(f"Error starting async scrape: {str(e)}\n{traceback.format_exc()}")
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': f'Error starting scrape: {str(e)}',
+                            'log': log_stream.getvalue()
+                        })
+                else:
+                    try:
+                        # Synchronous scraping
+                        scraper = ICalScraper()
+                        events_data = scraper.process_events(source_url)
+                        
+                        # Add message about which URL was used if it was discovered
+                        if scraper.selected_url and scraper.selected_url != source_url:
+                            messages.info(request, f'Using calendar URL: {scraper.selected_url}')
+                    finally:
+                        # Release lock after synchronous scraping
+                        scraping_locks[source_url].release()
             elif scraper_type == 'crawl4ai':
                 # Use Crawl4AI scraper
-                source_url = request.POST.get('source_url')
                 if not source_url:
                     if is_async:
                         return JsonResponse({
@@ -191,7 +345,6 @@ def event_import(request):
                                         job['status'] = 'complete'
                                         job['events'] = processed_events
                                         job['message'] = f'Successfully imported {len(processed_events)} events'
-                                        logger.info(job['message'])
                                     else:
                                         logger.warning("No events found in extraction result")
                                         job['status'] = 'complete'
@@ -238,7 +391,6 @@ def event_import(request):
                     loop.close()
             elif scraper_type == 'generic':
                 # Use Generic scraper
-                source_url = request.POST.get('source_url')
                 if not source_url:
                     if is_async:
                         return JsonResponse({
@@ -373,26 +525,41 @@ def event_import(request):
                 # Process and save events for synchronous requests
                 valid_events = []
                 skipped_events = []
+                updated_count = 0
+                created_count = 0
                 
                 for event_data in events_data:
                     try:
-                        # Create event but don't save yet
-                        event = Event(user=request.user)
+                        # Check for existing event
+                        existing = Event.objects.filter(
+                            user=request.user,
+                            title=event_data.get('title'),
+                            start_time=event_data.get('start_time')
+                        ).first()
                         
-                        # Update fields from event_data
-                        for field, value in event_data.items():
-                            if hasattr(event, field):
-                                setattr(event, field, value)
-                        
-                        # Save the event
-                        event.save()
-                        valid_events.append(event_data)
+                        if existing:
+                            # Update existing event
+                            for field, value in event_data.items():
+                                if hasattr(existing, field):
+                                    setattr(existing, field, value)
+                            existing.save()
+                            updated_count += 1
+                            valid_events.append(event_data)
+                        else:
+                            # Create new event
+                            event = Event(user=request.user)
+                            for field, value in event_data.items():
+                                if hasattr(event, field):
+                                    setattr(event, field, value)
+                            event.save()
+                            created_count += 1
+                            valid_events.append(event_data)
                     except Exception as e:
                         event_data['reason'] = str(e)
                         skipped_events.append(event_data)
                 
                 # Show success message with details about skipped events
-                success_msg = f'Successfully imported {len(valid_events)} events'
+                success_msg = f'Successfully processed {len(valid_events)} events ({created_count} created, {updated_count} updated)'
                 if skipped_events:
                     success_msg += f'. {len(skipped_events)} events were skipped:'
                     for event in skipped_events:
