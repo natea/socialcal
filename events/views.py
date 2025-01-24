@@ -24,6 +24,33 @@ stream_handler.setLevel(logging.DEBUG)
 logger = logging.getLogger('events.scrapers.generic_scraper')
 logger.addHandler(stream_handler)
 
+class TimedLock:
+    """A lock that automatically releases after a timeout period"""
+    def __init__(self, timeout=300):  # 5 minutes default timeout
+        self.lock = Lock()
+        self.timeout = timeout
+        self.acquire_time = None
+    
+    def acquire(self, blocking=True, timeout=-1):
+        # First check if we need to auto-release a stale lock
+        if self.acquire_time is not None:
+            if time.time() - self.acquire_time > self.timeout:
+                logger.warning("Auto-releasing stale lock")
+                try:
+                    self.release()
+                except:
+                    pass  # Ignore errors from releasing an already released lock
+        
+        # Now try to acquire the lock
+        result = self.lock.acquire(blocking=blocking, timeout=timeout)
+        if result:
+            self.acquire_time = time.time()
+        return result
+    
+    def release(self):
+        self.acquire_time = None
+        return self.lock.release()
+
 # Store scraping jobs in memory (in production, use Redis or similar)
 scraping_jobs = {}
 # Lock for preventing multiple scrapes of the same URL
@@ -109,7 +136,7 @@ def event_import(request):
         
         # Create a lock for this URL if it doesn't exist
         if source_url not in scraping_locks:
-            scraping_locks[source_url] = Lock()
+            scraping_locks[source_url] = TimedLock(timeout=300)  # 5 minute timeout
         
         # Try to acquire the lock
         if not scraping_locks[source_url].acquire(blocking=False):
