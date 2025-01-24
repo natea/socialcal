@@ -1,0 +1,152 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Wayland Post - ECPv6.9.1//NONSGML v1.0//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Wayland Post
+X-ORIGINAL-URL:https://www.waylandpost.org
+X-WR-CALDESC:Events for Wayland Post
+REFRESH-INTERVAL;VALUE=DURATION:PT1H
+X-Robots-Tag:noindex
+X-PUBLISHED-TTL:PT1H
+BEGIN:VTIMEZONE
+TZID:America/New_York
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+DTSTART:20250309T070000
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+DTSTART:20251102T060000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250124T083000
+DTEND;TZID=America/New_York:20250124T083000
+DTSTAMP:20250124T132107
+CREATED:20250123T225547Z
+LAST-MODIFIED:20250123T225621Z
+UID:10001316-1737707400-1737707400@www.waylandpost.org
+SUMMARY:Economic Development Committee
+DESCRIPTION:
+URL:https://www.waylandpost.org/event/economic-development-committee-6/
+LOCATION:Town Building\, 41 Cochituate Road
+CATEGORIES:Town Government
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250126T150000
+DTEND;TZID=America/New_York:20250126T160000
+DTSTAMP:20250124T132107
+CREATED:20241218T201819Z
+LAST-MODIFIED:20241218T201819Z
+UID:10000730-1737903600-1737907200@www.waylandpost.org
+SUMMARY:The Zahili Zamora Quartet
+DESCRIPTION:Enjoy the talent of Cuban pianist\, composer\, and bandleader Zahili Zamora. During this special concert\, she will unveil a selection of her new compositions from her upcoming album\, set to be released this year. Zahili will be accompanied by Panamanian saxophonist Samuel Batista\, Dominican percussionist Francis P.\, and Dominican bassist Abner Cabrera. The Berklee Faculty Jazz Series is co-sponsored by the First Parish in Wayland and Arts Wayland. Buy your tickets here at artswayland.com/pages/jazz-concert-zahili-zamora.
+URL:https://www.waylandpost.org/event/the-zahili-zamora-quartet/
+LOCATION:First Parish in Wayland\, 225 Boston Post Road
+CATEGORIES:Arts,Arts Wayland
+ATTACH;FMTTYPE=image/jpeg:https://www.waylandpost.org/wp-content/uploads/2024/12/Zahili-Zamora-Quartet-Jazz-IG-scaled.jpg
+ORGANIZER;CN="Arts Wayland":MAILTO:thew@artswayland.com
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250127T174500
+DTEND;TZID=America/New_York:20250127T191500
+DTSTAMP:20250124T132107
+CREATED:20241212T000621Z
+LAST-MODIFIED:20241212T001622Z
+UID:10000699-1737999900-1738005300@www.waylandpost.org
+SUMMARY:Watercolor and Oil Pastel Workshop
+DESCRIPTION:With Dr. Rahul Ray. The 8-week class will begin on Monday Jan. 27\, from 5:45 to 7:15 p.m.\, at The First Parish in Wayland. The classes will be held in a studio setting and focus on fundamental skills\, such as observation\, perspective\, scale\, and technique (e.g. sketching).
+URL:https://www.waylandpost.org/event/watercolor-and-oil-pastel-workshop/
+LOCATION:First Parish in Wayland\, 225 Boston Post Road
+CATEGORIES:Arts,Arts Wayland
+ATTACH;FMTTYPE=image/png:https://www.waylandpost.org/wp-content/uploads/2024/12/paste.png
+ORGANIZER;CN="Arts Wayland":MAILTO:thew@artswayland.com
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250127T180000
+DTEND;TZID=America/New_York:20250127T180000
+DTSTAMP:20250124T132107
+CREATED:20250123T225857Z
+LAST-MODIFIED:20250123T225857Z
+UID:10001317-1738000800-1738000800@www.waylandpost.org
+SUMMARY:Finance Committee
+DESCRIPTION:
+URL:https://www.waylandpost.org/event/finance-committee-12/
+LOCATION:Town Building\, 41 Cochituate Road
+CATEGORIES:Town Government
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250127T180000
+DTEND;TZID=America/New_York:20250127T180000
+DTSTAMP:20250124T132107
+CREATED:20250123T230549Z
+LAST-MODIFIED:20250123T230549Z
+UID:10001318-1738000800-1738000800@www.waylandpost.org
+SUMMARY:School Committee
+DESCRIPTION:
+URL:https://www.waylandpost.org/event/school-committee-11/
+LOCATION:Town Building\, 41 Cochituate Road
+CATEGORIES:Schools,Town Government
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250128T190000
+DTEND;TZID=America/New_York:20250128T190000
+DTSTAMP:20250124T132107
+CREATED:20250123T230907Z
+LAST-MODIFIED:20250123T230907Z
+UID:10001319-1738090800-1738090800@www.waylandpost.org
+SUMMARY:Planning Board
+DESCRIPTION:
+URL:https://www.waylandpost.org/event/planning-board-9/
+CATEGORIES:Town Government
+LOCATION:https://www.wayland.ma.us/public-body-meeting-information-virtual-inperson-and-hybrid
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250129T130000
+DTEND;TZID=America/New_York:20250129T150000
+DTSTAMP:20250124T132107
+CREATED:20241231T164646Z
+LAST-MODIFIED:20241231T165259Z
+UID:10000811-1738155600-1738162800@www.waylandpost.org
+SUMMARY:Matinee Movie: Joy
+DESCRIPTION:“Joy” tells the remarkable true story of a young nurse\, a visionary scientist\, and an innovative surgeon who face opposition from the church\, state\, media\, and medical establishment in their pursuit of the world’s first ‘test tube baby\,’ Louise Joy Brown. Starring Thomasin McKenzie\, Bill Nighy\, and James Norton. (2024; Biography\, Drama\, History; 1hr. 55 min.) Popcorn and cold drinks are on the house. To register\, contact the COA at coa@wayland.ma.us or 508-358-2990.
+URL:https://www.waylandpost.org/event/matinee-movie-joy/
+LOCATION:Town Building\, Council on Aging\, 41 Cochituate Road
+CATEGORIES:Council on Aging
+ATTACH;FMTTYPE=image/png:https://www.waylandpost.org/wp-content/uploads/2024/12/Joy-1.png
+ORGANIZER;CN="Council on Aging":MAILTO:coa@wayland.ma.us
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250129T183000
+DTEND;TZID=America/New_York:20250129T183000
+DTSTAMP:20250124T132107
+CREATED:20250124T170751Z
+LAST-MODIFIED:20250124T170751Z
+UID:10001322-1738175400-1738175400@www.waylandpost.org
+SUMMARY:Conservation Commission
+DESCRIPTION:
+URL:https://www.waylandpost.org/event/conservation-commission-6/
+CATEGORIES:Town Government
+LOCATION:https://www.wayland.ma.us/public-body-meeting-information-virtual-inperson-and-hybrid
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250130T090000
+DTEND;TZID=America/New_York:20250130T140000
+DTSTAMP:20250124T132107
+CREATED:20241218T005942Z
+LAST-MODIFIED:20241218T005942Z
+UID:10000726-1738227600-1738245600@www.waylandpost.org
+SUMMARY:Trip to Icon Museum and Study Center
+DESCRIPTION:Join the Council on Aging for a visit to the Icon Museum and Study Center in Clinton. This unique museum presents a combination of history\, art\, and culture under one roof. The collection includes more than 1\,000 Russian icons and related artifacts. Reserve your seat by contacting the COA at coa@wayland.ma.us or 508-358-2990.
+URL:https://www.waylandpost.org/event/trip-to-icon-museum-and-study-center/
+LOCATION:Town Building\, Council on Aging\, 41 Cochituate Road
+CATEGORIES:Council on Aging
+ATTACH;FMTTYPE=image/png:https://www.waylandpost.org/wp-content/uploads/2024/12/Icon-Museum-Clinton.png
+ORGANIZER;CN="Council on Aging":MAILTO:coa@wayland.ma.us
+END:VEVENT
+END:VCALENDAR
