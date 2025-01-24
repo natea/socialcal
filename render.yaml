@@ -18,8 +18,23 @@ services:
         generateValue: true
       - key: WEB_CONCURRENCY
         value: 4
+      # Email configuration
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      # API Keys
+      - key: SIMPLESCRAPER_API_KEY
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OLOSTEP_API_KEY
+        sync: false
 
-databases:
   - name: socialcal_db
     plan: free
     databaseName: socialcal
