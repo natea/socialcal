@@ -1,5 +1,6 @@
 import dj_database_url
 from .base import *
+import os
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = get_env_variable('DJANGO_SECRET_KEY')
@@ -31,16 +32,20 @@ SECURE_HSTS_PRELOAD = True
 # Static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.resend.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'resend'
-EMAIL_HOST_PASSWORD = get_env_variable('RESEND_API_KEY')
-DEFAULT_FROM_EMAIL = get_env_variable('RESEND_FROM_EMAIL')
+# Email Configuration - Make it optional
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Default to console backend
 
-# API Keys
-SIMPLESCRAPER_API_KEY = get_env_variable('SIMPLESCRAPER_API_KEY')
-FIRECRAWL_API_KEY = get_env_variable('FIRECRAWL_API_KEY')
-GROQ_API_KEY = get_env_variable('GROQ_API_KEY') 
+# Only configure email if RESEND_API_KEY is available
+if 'RESEND_API_KEY' in os.environ and 'RESEND_FROM_EMAIL' in os.environ:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.resend.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = 'resend'
+    EMAIL_HOST_PASSWORD = os.environ['RESEND_API_KEY']
+    DEFAULT_FROM_EMAIL = os.environ['RESEND_FROM_EMAIL']
+
+# API Keys - Make them optional
+SIMPLESCRAPER_API_KEY = os.environ.get('SIMPLESCRAPER_API_KEY', '')
+FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '') 
