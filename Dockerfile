@@ -35,18 +35,28 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
+# Create and switch to a non-root user
+RUN useradd -m -s /bin/bash app
+RUN mkdir -p /app /app/staticfiles /app/media
+RUN chown -R app:app /app
+USER app
+
 # Set up app directory
 WORKDIR /app
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=app:app requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
 
 # Copy project
-COPY . .
+COPY --chown=app:app . .
 
-# Collect static files and run migrations
-RUN python manage.py collectstatic --no-input
+# Create a script to run startup commands
+RUN echo '#!/bin/bash\n\
+python manage.py collectstatic --no-input\n\
+python manage.py migrate\n\
+gunicorn socialcal.wsgi:application\n'\
+> /app/start.sh && chmod +x /app/start.sh
 
-# Run gunicorn
-CMD gunicorn socialcal.wsgi:application 
+# Run the startup script
+CMD ["/app/start.sh"] 

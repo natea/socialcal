@@ -1,4 +1,5 @@
 from .base import *
+import os
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-replace-with-your-secret-key'
@@ -19,7 +20,7 @@ DATABASES = {
 # Email Configuration for Development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# API Keys
-SIMPLESCRAPER_API_KEY = get_env_variable('SIMPLESCRAPER_API_KEY')
-FIRECRAWL_API_KEY = get_env_variable('FIRECRAWL_API_KEY')
-GROQ_API_KEY = get_env_variable('GROQ_API_KEY') 
+# API Keys - Make them optional in development
+SIMPLESCRAPER_API_KEY = os.environ.get('SIMPLESCRAPER_API_KEY', '')
+FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '') 
