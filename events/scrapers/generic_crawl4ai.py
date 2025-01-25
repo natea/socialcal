@@ -35,11 +35,15 @@ class GenericCrawl4AIScraper:
     def __init__(self, api_token: str = None):
         # Try to get API key in this order:
         # 1. Passed api_token
-        # 2. Django settings
-        # 3. Environment variable
-        self.api_token = api_token or getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        # 2. Django settings OPENAI_API_KEY
+        # 3. Environment variable OPENAI_API_KEY
+        self.api_token = api_token or os.environ.get('OPENAI_API_KEY') or getattr(settings, 'OPENAI_API_KEY', None)
+        
         if not self.api_token:
             logger.warning("No OpenAI API key available. Using basic extraction.")
+            logger.debug(f"API Token sources checked: passed={bool(api_token)}, env={bool(os.environ.get('OPENAI_API_KEY'))}, settings={bool(getattr(settings, 'OPENAI_API_KEY', None))}")
+        else:
+            logger.info("OpenAI API key found and configured.")
 
     async def extract_events(self, url: str) -> List[dict]:
         """Extract events from any website."""

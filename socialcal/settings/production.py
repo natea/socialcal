@@ -1,6 +1,7 @@
 import dj_database_url
 from .base import *
 import os
+import logging
 
 # SECURITY WARNING: keep the secret key used in production secret!
 try:
@@ -64,8 +65,13 @@ if 'RESEND_API_KEY' in os.environ and 'RESEND_FROM_EMAIL' in os.environ:
 SIMPLESCRAPER_API_KEY = os.environ.get('SIMPLESCRAPER_API_KEY', '')
 FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OLOSTEP_API_KEY = os.environ.get('OLOSTEP_API_KEY', '')
+
+# OpenAI Configuration
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+if not OPENAI_API_KEY:
+    logger = logging.getLogger(__name__)
+    logger.warning('OPENAI_API_KEY environment variable is not set. Event extraction will use basic mode.')
 
 # Redis Cache Configuration
 CACHES = {

@@ -176,10 +176,14 @@ Site.objects.get_or_create(id=1, defaults={\"domain\": \"socialcal.onrender.com\
 "\n\
 \n\
 # Check OpenAI API key\n\
-if [ -n "$OPENAI_API_KEY" ]; then\n\
-    echo "OpenAI API key is set"\n\
+openai_key="$OPENAI_API_KEY"\n\
+if [ -n "$openai_key" ]; then\n\
+    echo "OpenAI API key is set (length: ${#openai_key} characters)"\n\
+    if [ ${#openai_key} -lt 20 ]; then\n\
+        echo "Warning: OpenAI API key seems too short. Please verify it's correct."\n\
+    fi\n\
 else\n\
-    echo "Warning: OpenAI API key is not set"\n\
+    echo "Warning: OpenAI API key is not set. Event extraction will use basic mode."\n\
 fi\n\
 \n\
 # Start gunicorn\n\
