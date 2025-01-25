@@ -84,7 +84,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DISPLAY=:99 \
     DBUS_SESSION_BUS_ADDRESS=/dev/null \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=socialcal.settings.production
 
 # Create necessary directories for app user
 RUN mkdir -p /home/app/.crawl4ai /home/app/.cache/ms-playwright && \
@@ -105,12 +106,13 @@ COPY --chown=app:app . .
 # Switch to app user for remaining operations
 USER app
 
-# Run migrations and collect static files
-RUN python manage.py collectstatic --noinput
+# Collect static files with debug mode off
+RUN DJANGO_DEBUG=False python manage.py collectstatic --noinput --clear
 
 # Create a script to run startup commands
 RUN echo '#!/bin/bash\n\
 Xvfb :99 -ac -screen 0 1280x1024x24 -nolisten tcp &\n\
+python manage.py migrate --noinput\n\
 exec gunicorn socialcal.wsgi:application \
     --bind=0.0.0.0:$PORT \
     --workers=$WEB_CONCURRENCY \
