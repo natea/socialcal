@@ -3,7 +3,7 @@ services:
     name: socialcal
     env: docker
     buildCommand: DOCKER_BUILDKIT=1 docker build -t socialcal .
-    startCommand: docker run -p $PORT:8000 socialcal
+    startCommand: docker run -p $PORT:8000 --env-file <(env) socialcal
     envVars:
       - key: DATABASE_URL
         fromDatabase:

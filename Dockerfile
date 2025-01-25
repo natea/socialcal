@@ -108,12 +108,17 @@ COPY --chown=app:app . .
 USER app
 
 # Collect static files with debug mode off
-RUN DJANGO_DEBUG=False python manage.py collectstatic --noinput --clear
+RUN COLLECTING_STATIC=true DJANGO_DEBUG=False python manage.py collectstatic --noinput --clear
 
 # Create a script to run startup commands
 RUN echo '#!/bin/bash\n\
 Xvfb :99 -ac -screen 0 1280x1024x24 -nolisten tcp &\n\
 python manage.py migrate --noinput\n\
+if [ -n "$OPENAI_API_KEY" ]; then\n\
+    echo "OpenAI API key is set"\n\
+else\n\
+    echo "Warning: OpenAI API key is not set"\n\
+fi\n\
 exec gunicorn socialcal.wsgi:application \
     --bind=0.0.0.0:$PORT \
     --workers=$WEB_CONCURRENCY \
