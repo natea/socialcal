@@ -19,6 +19,7 @@ from asgiref.sync import sync_to_async, async_to_sync
 from django.core.cache import cache
 import pickle
 from threading import Lock
+from django.urls import reverse
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -227,8 +228,18 @@ async def _event_import(request):
                             except Exception as e:
                                 logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
                         
-                        messages.success(request, f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)')
-                        return redirect('events:list')
+                        success_message = f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
+                        messages.success(request, success_message)
+                        
+                        # Return JSON for AJAX requests, redirect for regular form submissions
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            return JsonResponse({
+                                'status': 'complete',
+                                'message': success_message,
+                                'redirect_url': reverse('events:list')
+                            })
+                        else:
+                            return redirect('events:list')
                     except HTTPError as e:
                         logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
                         messages.error(request, str(e))
@@ -284,8 +295,18 @@ async def _event_import(request):
                         except Exception as e:
                             logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
                     
-                    messages.success(request, f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)')
-                    return redirect('events:list')
+                    success_message = f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
+                    messages.success(request, success_message)
+                    
+                    # Return JSON for AJAX requests, redirect for regular form submissions
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'status': 'complete',
+                            'message': success_message,
+                            'redirect_url': reverse('events:list')
+                        })
+                    else:
+                        return redirect('events:list')
                 except Exception as e:
                     logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
                     messages.error(request, str(e))

@@ -165,7 +165,8 @@ document.querySelectorAll('.import-form').forEach(form => {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             });
 
@@ -182,6 +183,14 @@ document.querySelectorAll('.import-form').forEach(form => {
                     logOutput.textContent = data.log;
                     logOutput.parentElement.scrollTop = logOutput.parentElement.scrollHeight;
                 }
+                return;
+            }
+            
+            if (data.status === 'complete') {
+                showSuccess(data.message);
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 1000);
                 return;
             }
             
