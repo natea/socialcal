@@ -39,10 +39,20 @@ services:
         sync: false
       - key: OLOSTEP_API_KEY
         sync: false
+      - key: REDIS_URL
+        fromService:
+          name: socialcal-redis
+          type: redis
+          property: connectionString
     disk:
       name: socialcal-data
       mountPath: /app/data
       sizeGB: 1
+
+  - type: redis
+    name: socialcal-redis
+    ipAllowList: []
+    plan: free
 
 databases:
   - name: socialcal_db

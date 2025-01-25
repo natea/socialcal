@@ -16,6 +16,9 @@ import traceback
 import asyncio
 from icalendar import Calendar, Event as ICalEvent
 from asgiref.sync import sync_to_async, async_to_sync
+from django.core.cache import cache
+import pickle
+from threading import Lock
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -56,12 +59,19 @@ class TimedLock:
     
     def release(self):
         self.acquire_time = None
-        return self.lock.release()
+        self.lock.release()
 
-# Store scraping jobs in memory (in production, use Redis or similar)
-scraping_jobs = {}
-# Lock for preventing multiple scrapes of the same URL
+# Store scraping locks in memory (these are short-lived)
 scraping_locks = {}
+
+def get_job_status(job_id):
+    """Get job status from Redis cache"""
+    status = cache.get(f'scraping_job_{job_id}')
+    return pickle.loads(status) if status else None
+
+def set_job_status(job_id, status):
+    """Set job status in Redis cache"""
+    cache.set(f'scraping_job_{job_id}', pickle.dumps(status), timeout=3600)  # 1 hour timeout
 
 @login_required
 def event_list(request):
@@ -124,11 +134,12 @@ def event_delete(request, pk):
 @login_required
 def event_import_status(request, job_id):
     # Check if the job exists
-    if job_id not in scraping_jobs:
+    status = get_job_status(job_id)
+    if not status:
         return JsonResponse({'error': 'Job not found'}, status=404)
     
     # Return the job status
-    return JsonResponse(scraping_jobs[job_id])
+    return JsonResponse(status)
 
 @login_required
 def event_import(request):
@@ -161,108 +172,94 @@ async def _event_import(request):
                 if is_async:
                     # Generate a unique job ID
                     job_id = str(time.time())
-                    scraping_jobs[job_id] = {
+                    set_job_status(job_id, {
                         'status': 'started',
                         'events': [],
                         'message': 'Scraping started'
-                    }
+                    })
 
                     # Start the scraping in a background thread
                     thread = Thread(target=scrape_crawl4ai_events_async, args=(source_url, job_id, request.user))
                     thread.start()
-
+                    
                     return JsonResponse({
                         'status': 'started',
                         'job_id': job_id,
                         'message': 'Scraping started'
                     })
                 else:
-                    try:
-                        events = await scrape_crawl4ai_events(source_url)
-                        for event_data in events:
-                            event = Event(user=request.user, **event_data)
-                            await save_event(event)
-                        messages.success(request, f'Successfully imported {len(events)} events')
-                        return redirect('events:list')
-                    except ValueError as e:
-                        logger.error(f'Invalid URL: {e}')
-                        messages.error(request, f'Invalid URL: {str(e)}')
-                        return HttpResponse(f'Invalid URL: {str(e)}', status=400)
-                    except HTTPError as e:
-                        logger.error(f'Error fetching events: {e}')
-                        messages.error(request, f'Error fetching events: {str(e)}')
-                        return HttpResponse(f'Error fetching events: {str(e)}', status=400)
-                    except Exception as e:
-                        logger.error(f'Error importing events: {e}')
-                        messages.error(request, f'Error importing events: {str(e)}')
-                        return HttpResponse(f'Error importing events: {str(e)}', status=400)
-
-            elif scraper_type == 'ical':
-                try:
-                    scraper = ICalScraper()
-                    events = scraper.process_events(source_url)
+                    # Synchronous scraping
+                    events = await scrape_crawl4ai_events(source_url)
                     
-                    # If a different URL was selected, inform the user
-                    if scraper.selected_url and scraper.selected_url != source_url:
-                        messages.info(request, f'Using calendar URL: {scraper.selected_url}')
-                    
-                    created_count = 0
+                    # Process events
+                    processed_events = []
                     updated_count = 0
+                    created_count = 0
+                    
                     for event_data in events:
-                        # Check for existing event with same title and start time
-                        existing_events = await filter_events(
-                            user=request.user,
-                            title=event_data.get('title'),
-                            start_time=event_data.get('start_time')
-                        )
-                        existing = existing_events[0] if existing_events else None
-                        
-                        if existing:
-                            # Update existing event
-                            for field, value in event_data.items():
-                                if hasattr(existing, field):
-                                    setattr(existing, field, value)
-                            await save_event(existing)
-                            updated_count += 1
-                        else:
-                            # Create new event
-                            event = Event(user=request.user, **event_data)
-                            await save_event(event)
-                            created_count += 1
-
-                    messages.success(request, f'Successfully imported {created_count} events and updated {updated_count} events')
-                    return redirect('events:list')
-                except ValueError as e:
-                    logger.error(f'Invalid URL: {e}')
-                    messages.error(request, f'Invalid URL: {str(e)}')
-                    return HttpResponse(f'Invalid URL: {str(e)}', status=400)
-                except HTTPError as e:
-                    logger.error(f'Error fetching events: {e}')
-                    messages.error(request, f'Error fetching events: {str(e)}')
-                    return HttpResponse(f'Error fetching events: {str(e)}', status=400)
-                except Exception as e:
-                    logger.error(f'Error importing events: {e}')
-                    messages.error(request, f'Error importing events: {str(e)}')
-                    return HttpResponse(f'Error importing events: {str(e)}', status=400)
-
+                        try:
+                            # Check for existing event
+                            existing = await filter_events(
+                                user=request.user,
+                                title=event_data.get('title'),
+                                start_time=event_data.get('start_time')
+                            )
+                            existing = existing[0] if existing else None
+                            
+                            if existing:
+                                # Update existing event
+                                for field, value in event_data.items():
+                                    if hasattr(existing, field):
+                                        setattr(existing, field, value)
+                                await save_event(existing)
+                                updated_count += 1
+                            else:
+                                # Create new event
+                                event = Event(user=request.user)
+                                for field, value in event_data.items():
+                                    if hasattr(event, field):
+                                        setattr(event, field, value)
+                                await save_event(event)
+                                created_count += 1
+                            
+                            processed_events.append(event_data)
+                        except Exception as e:
+                            logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
+                    
+                    return JsonResponse({
+                        'status': 'complete',
+                        'events': processed_events,
+                        'message': f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
+                    })
+            elif scraper_type == 'ical':
+                # Handle iCal scraping
+                scraper = ICalScraper()
+                events = await scraper.scrape_events(source_url)
+                return JsonResponse({
+                    'status': 'complete',
+                    'events': events,
+                    'message': f'Successfully scraped {len(events)} events'
+                })
         except Exception as e:
-            logger.error(f'Error importing events: {e}\n{traceback.format_exc()}')
-            messages.error(request, f'Error importing events: {str(e)}')
-            return HttpResponse(f'Error importing events: {str(e)}', status=400)
+            logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
 
     return render(request, 'events/import.html')
 
 @login_required
 def event_export(request):
+    # Get all events for the user
     events = Event.objects.filter(user=request.user)
-    response = HttpResponse(content_type='text/calendar')
-    response['Content-Disposition'] = 'attachment; filename="events.ics"'
     
-    # Create iCal calendar
+    # Create the calendar
     cal = Calendar()
-    cal.add('prodid', '-//SocialCal//EN')
+    cal.add('prodid', '-//SocialCal//Event Calendar//EN')
     cal.add('version', '2.0')
     
+    # Add events to the calendar
     for event in events:
         cal_event = ICalEvent()
         cal_event.add('summary', event.title)
@@ -272,6 +269,9 @@ def event_export(request):
         cal_event.add('location', event.get_full_address())
         cal.add_component(cal_event)
     
+    # Create the response
+    response = HttpResponse(content_type='text/calendar')
+    response['Content-Disposition'] = 'attachment; filename="events.ics"'
     response.write(cal.to_ical())
     return response
 
@@ -317,14 +317,14 @@ def scrape_crawl4ai_events_async(source_url, job_id, user):
                 logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
         
         # Update job status
-        scraping_jobs[job_id].update({
+        set_job_status(job_id, {
             'status': 'complete',
             'events': processed_events,
             'message': f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
         })
     except Exception as e:
         logger.error(f"Error in Crawl4AI scraping: {str(e)}\n{traceback.format_exc()}")
-        scraping_jobs[job_id].update({
+        set_job_status(job_id, {
             'status': 'error',
             'message': str(e)
         })

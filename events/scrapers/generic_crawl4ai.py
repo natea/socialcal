@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig, CacheMode
 from crawl4ai.extraction_strategy import LLMExtractionStrategy
 from events.utils.time_parser import format_event_datetime
+from django.conf import settings
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,7 +33,13 @@ class EventModel(BaseModel):
 
 class GenericCrawl4AIScraper:
     def __init__(self, api_token: str = None):
-        self.api_token = api_token or os.getenv("OPENAI_API_KEY")
+        # Try to get API key in this order:
+        # 1. Passed api_token
+        # 2. Django settings
+        # 3. Environment variable
+        self.api_token = api_token or getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        if not self.api_token:
+            logger.warning("No OpenAI API key available. Using basic extraction.")
 
     async def extract_events(self, url: str) -> List[dict]:
         """Extract events from any website."""
