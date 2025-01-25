@@ -10,6 +10,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 from django.utils import timezone
 import pytz
 import logging
+import traceback
 
 logger = logging.getLogger('events.scrapers.generic_scraper')
 
@@ -304,4 +305,14 @@ class ICalScraper(BaseScraper):
         # Print which URL was used for fetching
         print(f"\nUsing calendar URL: {self.selected_url}\n")
         
-        return events 
+        return events
+
+    async def scrape_events(self, url: str) -> List[Dict[str, Any]]:
+        """Scrape events from an iCal feed"""
+        try:
+            # Process events synchronously since iCal feeds are usually small
+            events = self.process_events(url)
+            return events
+        except Exception as e:
+            logger.error(f"Error scraping iCal feed: {str(e)}\n{traceback.format_exc()}")
+            raise Exception(f"Failed to scrape iCal feed: {str(e)}")
