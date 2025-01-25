@@ -36,9 +36,9 @@ redis==5.0.1
 
 # Development and Testing
 pytest
-coverage==7.4.0
+coverage
 pytest-asyncio==0.25.2
-pytest-cov==6.0.0
+pytest-cov
 pytest-django==4.9.0
 django-debug-toolbar==5.0.1
 
