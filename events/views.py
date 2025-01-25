@@ -188,8 +188,66 @@ async def _event_import(request):
                         'message': 'Scraping started'
                     })
                 else:
-                    # Synchronous scraping
-                    events = await scrape_crawl4ai_events(source_url)
+                    try:
+                        # Synchronous scraping
+                        events = await scrape_crawl4ai_events(source_url)
+                        
+                        # Process events
+                        processed_events = []
+                        updated_count = 0
+                        created_count = 0
+                        
+                        for event_data in events:
+                            try:
+                                # Check for existing event
+                                existing = await filter_events(
+                                    user=request.user,
+                                    title=event_data.get('title'),
+                                    start_time=event_data.get('start_time')
+                                )
+                                existing = existing[0] if existing else None
+                                
+                                if existing:
+                                    # Update existing event
+                                    for field, value in event_data.items():
+                                        if hasattr(existing, field):
+                                            setattr(existing, field, value)
+                                    await save_event(existing)
+                                    updated_count += 1
+                                else:
+                                    # Create new event
+                                    event = Event(user=request.user)
+                                    for field, value in event_data.items():
+                                        if hasattr(event, field):
+                                            setattr(event, field, value)
+                                    await save_event(event)
+                                    created_count += 1
+                                
+                                processed_events.append(event_data)
+                            except Exception as e:
+                                logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
+                        
+                        messages.success(request, f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)')
+                        return redirect('events:list')
+                    except HTTPError as e:
+                        logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
+                        messages.error(request, str(e))
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': str(e)
+                        }, status=400)
+                    except Exception as e:
+                        logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
+                        messages.error(request, str(e))
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': str(e)
+                        }, status=400)
+            elif scraper_type == 'ical':
+                # Handle iCal scraping
+                try:
+                    scraper = ICalScraper()
+                    events = await scraper.scrape_events(source_url)
                     
                     # Process events
                     processed_events = []
@@ -226,20 +284,15 @@ async def _event_import(request):
                         except Exception as e:
                             logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
                     
+                    messages.success(request, f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)')
+                    return redirect('events:list')
+                except Exception as e:
+                    logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
+                    messages.error(request, str(e))
                     return JsonResponse({
-                        'status': 'complete',
-                        'events': processed_events,
-                        'message': f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
-                    })
-            elif scraper_type == 'ical':
-                # Handle iCal scraping
-                scraper = ICalScraper()
-                events = await scraper.scrape_events(source_url)
-                return JsonResponse({
-                    'status': 'complete',
-                    'events': events,
-                    'message': f'Successfully scraped {len(events)} events'
-                })
+                        'status': 'error',
+                        'message': str(e)
+                    }, status=400)
         except Exception as e:
             logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
             return JsonResponse({
