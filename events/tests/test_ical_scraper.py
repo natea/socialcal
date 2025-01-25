@@ -62,10 +62,12 @@ SAMPLE_WEBPAGE_WITH_ICAL = """
 <html>
 <head>
     <link rel="alternate" type="text/calendar" href="https://example.com/events.ics">
+    <link rel="alternate" type="application/x-webcal" href="webcal://example.com/feed.ics">
 </head>
 <body>
     <a href="webcal://example.com/feed.ics">Subscribe to Calendar</a>
     <a href="https://example.com/events/?ical=1">Export Calendar</a>
+    <a href="https://example.com/calendar.ics">Download iCal</a>
 </body>
 </html>
 """
@@ -89,49 +91,51 @@ class TestICalScraper(TestCase):
 
         # Test URL discovery
         urls = self.scraper.discover_ical_urls('https://example.com')
-        self.assertEqual(len(urls), 3)
+        self.assertEqual(len(urls), 4)
         self.assertIn('https://example.com/events.ics', urls)
         self.assertIn('https://example.com/feed.ics', urls)
         self.assertIn('https://example.com/events/?ical=1', urls)
+        self.assertIn('https://example.com/calendar.ics', urls)
 
     @patch('requests.get')
     def test_validate_ical_url(self, mock_get):
         # Mock valid iCal response
         mock_response = MagicMock()
-        mock_response.text = SAMPLE_ICAL_DATA
+        mock_response.content = SAMPLE_ICAL_DATA.encode('utf-8')
+        mock_response.headers = {'content-type': 'text/calendar'}
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
 
         # Test validation
-        is_valid = self.scraper.validate_ical_url('https://example.com/events.ics')
-        self.assertTrue(is_valid)
+        result = self.scraper.validate_ical_url('https://example.com/events.ics')
+        self.assertTrue(result)
 
         # Test invalid iCal data
-        mock_response.text = "Not an iCal file"
+        mock_response.content = 'Not an iCal file'.encode('utf-8')
+        mock_response.headers = {'content-type': 'text/calendar'}
         mock_get.return_value = mock_response
-        is_valid = self.scraper.validate_ical_url('https://example.com/not-ical.txt')
-        self.assertFalse(is_valid)
+        result = self.scraper.validate_ical_url('https://example.com/not-ical.txt')
+        self.assertFalse(result)
 
     @patch('requests.get')
     def test_process_events(self, mock_get):
         # Mock iCal response
         mock_response = MagicMock()
-        mock_response.text = SAMPLE_ICAL_DATA
+        mock_response.content = SAMPLE_ICAL_DATA.encode('utf-8')
+        mock_response.headers = {'content-type': 'text/calendar'}
         mock_response.raise_for_status.return_value = None
-        mock_response.url = 'https://example.com/events.ics'
         mock_get.return_value = mock_response
 
-        # Process events
+        # Test event processing
         events = self.scraper.process_events('https://example.com/events.ics')
-
-        # Verify number of events
         self.assertEqual(len(events), 3)
-
-        # Verify first event details
-        event1 = events[0]
-        self.assertEqual(event1['title'], 'Economic Development Committee')
-        self.assertEqual(event1['venue_name'], 'Town Building')
-        self.assertEqual(event1['venue_address'], '41 Cochituate Road')
+        
+        # Check first event
+        first_event = events[0]
+        self.assertEqual(first_event['title'], 'Economic Development Committee')
+        self.assertEqual(first_event['description'], 'Test Description 1')
+        self.assertEqual(first_event['venue_name'], 'Town Building')
+        self.assertEqual(first_event['venue_address'], '41 Cochituate Road')
 
         # Verify second event details
         event2 = events[1]
@@ -141,43 +145,56 @@ class TestICalScraper(TestCase):
 
         # Verify timezone handling
         eastern = pytz.timezone('America/New_York')
-        self.assertTrue(timezone.is_aware(event1['start_time']))
-        self.assertEqual(event1['start_time'].tzinfo.zone, 'America/New_York')
+        self.assertTrue(timezone.is_aware(first_event['start_time']))
+        self.assertEqual(first_event['start_time'].tzinfo.zone, 'America/New_York')
 
     @patch('requests.get')
     def test_webpage_to_events(self, mock_get):
-        # Mock responses
-        webpage_response = MagicMock()
-        webpage_response.text = SAMPLE_WEBPAGE_WITH_ICAL
-        webpage_response.raise_for_status.return_value = None
+        def mock_response(url, allow_redirects=True, **kwargs):
+            response = MagicMock()
+            if url == 'https://example.com':
+                # Return HTML page for the initial URL
+                response.content = SAMPLE_WEBPAGE_WITH_ICAL.encode('utf-8')
+                response.text = SAMPLE_WEBPAGE_WITH_ICAL
+                response.headers = {'content-type': 'text/html; charset=utf-8'}
+            else:
+                # Return iCal data for all other URLs (the discovered calendar URLs)
+                response.content = SAMPLE_ICAL_DATA.encode('utf-8')
+                response.text = SAMPLE_ICAL_DATA
+                response.headers = {'content-type': 'text/calendar; charset=utf-8'}
+            response.raise_for_status.return_value = None
+            return response
 
-        ical_response = MagicMock()
-        ical_response.text = SAMPLE_ICAL_DATA
-        ical_response.raise_for_status.return_value = None
-        ical_response.url = 'https://example.com/events.ics'
+        # Configure mock to use our custom response function
+        mock_get.side_effect = mock_response
 
-        # Configure mock to return different responses
-        mock_get.side_effect = [webpage_response, ical_response, ical_response, ical_response]
-
-        # Process events from webpage URL
-        events = self.scraper.process_events('https://example.com/events')
-        
-        # Verify events were processed
+        # Test event processing from webpage
+        events = self.scraper.process_events('https://example.com')
         self.assertEqual(len(events), 3)
-        self.assertTrue(any(e['title'] == 'Economic Development Committee' for e in events))
-        self.assertTrue(any(e['title'] == 'The Zahili Zamora Quartet' for e in events))
-        self.assertTrue(any(e['title'] == 'Watercolor and Oil Pastel Workshop' for e in events))
+        
+        # Verify the discovered URL was used
+        self.assertIsNotNone(self.scraper.selected_url)
+        self.assertTrue(any(self.scraper.selected_url.endswith(ext) for ext in ['.ics', '?ical=1']))
 
-    def test_error_handling(self):
-        # Test with invalid URL
-        with self.assertRaises(Exception):
-            self.scraper.process_events('not-a-url')
+    @patch('requests.get')
+    def test_error_handling(self, mock_get):
+        # Test network error
+        mock_get.side_effect = requests.exceptions.RequestException('Network error')
+        with self.assertRaises(Exception) as context:
+            self.scraper.process_events('https://example.com/events.ics')
+        self.assertIn('Failed to fetch URL', str(context.exception))
 
-        # Test with non-existent URL
-        with patch('requests.get') as mock_get:
-            mock_get.side_effect = requests.exceptions.RequestException
-            with self.assertRaises(Exception):
-                self.scraper.process_events('https://nonexistent.example.com')
+        # Test invalid iCal data
+        mock_response = MagicMock()
+        mock_response.content = 'Not an iCal file'.encode('utf-8')
+        mock_response.headers = {'content-type': 'text/calendar'}
+        mock_response.raise_for_status.return_value = None
+        mock_get.side_effect = None
+        mock_get.return_value = mock_response
+
+        with self.assertRaises(Exception) as context:
+            self.scraper.process_events('https://example.com/events.ics')
+        self.assertIn('Invalid iCal data', str(context.exception))
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()

@@ -13,20 +13,45 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.MD5PasswordHasher',
 ]
 
-# Turn off debug mode
+# Debug settings
 DEBUG = False
+
+# Add a test secret key
+SECRET_KEY = 'django-insecure-test-key-for-testing-only-do-not-use-in-production'
+
+# Remove debug toolbar from installed apps and middleware
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'debug_toolbar']
+MIDDLEWARE = [mw for mw in MIDDLEWARE if not mw.startswith('debug_toolbar.')]
+
+# Configure debug toolbar to be disabled in tests
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda request: False,
+    'IS_RUNNING_TESTS': True,  # This tells the debug toolbar that we're running tests
+}
+
+# Disable debug toolbar internal IPs
+INTERNAL_IPS = []
 
 # Make tests faster by using simple password hasher
 PASSWORD_HASHERS = (
     'django.contrib.auth.hashers.MD5PasswordHasher',
 )
 
-# Use a fast template loader
-TEMPLATES[0]['OPTIONS']['loaders'] = [
-    ('django.template.loaders.cached.Loader', [
-        'django.template.loaders.filesystem.Loader',
-        'django.template.loaders.app_directories.Loader',
-    ]),
+# Template settings
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
 ]
 
 # Explicitly set the timezone for testing

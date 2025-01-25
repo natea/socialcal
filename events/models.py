@@ -53,4 +53,8 @@ class Event(models.Model):
             self.venue_postal_code,
             self.venue_country
         ]
-        return ', '.join(filter(None, parts))
+        return ', '.join(part for part in parts if part)
+        
+    def get_full_address(self):
+        """Return the full address as a string."""
+        return self.location
