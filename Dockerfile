@@ -11,6 +11,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
 # Set work directory
 WORKDIR /app
 
+# Create and activate virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -67,19 +71,20 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
 # Create and switch to a non-root user
 RUN useradd -m -s /bin/bash app
 
-# Set work directory
+# Set work directory and create necessary directories
 WORKDIR /app
+RUN mkdir -p /app/staticfiles /app/media && \
+    chown -R app:app /app
+
+# Create virtual environment
+COPY --from=builder /opt/venv /opt/venv
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DISPLAY=:99 \
     DBUS_SESSION_BUS_ADDRESS=/dev/null \
-    PATH="/home/app/.local/bin:${PATH}"
-
-# Copy Python packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
-COPY --from=builder /usr/local/bin/ /usr/local/bin/
+    PATH="/opt/venv/bin:$PATH"
 
 # Create necessary directories for app user
 RUN mkdir -p /home/app/.crawl4ai /home/app/.cache/ms-playwright && \
@@ -89,21 +94,19 @@ RUN mkdir -p /home/app/.crawl4ai /home/app/.cache/ms-playwright && \
 COPY --from=builder --chown=app:app /root/.crawl4ai/ /home/app/.crawl4ai/
 COPY --from=builder --chown=app:app /root/.cache/ms-playwright/ /home/app/.cache/ms-playwright/
 
-# Switch to app user
-USER app
-
 # Set up X11 directory
 USER root
 RUN mkdir -p /tmp/.X11-unix && \
     chmod 1777 /tmp/.X11-unix
-USER app
 
-# Copy project files
+# Copy project files and set permissions
 COPY --chown=app:app . .
+
+# Switch to app user for remaining operations
+USER app
 
 # Run migrations and collect static files
 RUN python manage.py collectstatic --noinput
-RUN python manage.py migrate
 
 # Create a script to run startup commands
 RUN echo '#!/bin/bash\n\
