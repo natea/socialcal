@@ -6,6 +6,7 @@ djangorestframework==3.14.0
 lxml==5.3.0
 certifi==2024.8.30
 django-redis==5.4.0
+django-widget-tweaks==1.5.0
 
 # Authentication and Social Login
 django-allauth==0.60.1
@@ -62,3 +63,6 @@ google-generativeai
 pytz==2024.1
 
 seleniumbase
+
+# Added from the code block
+django-widget-tweaks==1.5.0
