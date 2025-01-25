@@ -20,12 +20,22 @@ ALLOWED_HOSTS = ['socialcal.onrender.com', '.onrender.com']  # Update with your 
 
 # Database
 # Use Render PostgreSQL database
-DATABASES = {
-    'default': dj_database_url.config(
-        default=get_env_variable('DATABASE_URL'),
-        conn_max_age=600
-    )
-}
+if os.environ.get('COLLECTING_STATIC') == 'true':
+    # Use SQLite for collectstatic
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
+else:
+    # Use production database
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=get_env_variable('DATABASE_URL'),
+            conn_max_age=600
+        )
+    }
 
 # Security Settings
 SECURE_SSL_REDIRECT = True
