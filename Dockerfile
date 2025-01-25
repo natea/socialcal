@@ -11,9 +11,15 @@ RUN apt-get update && apt-get install -y \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Configure pip to use Render's PyPI mirror and caching
+RUN pip config set global.index-url https://pypi.render.com/simple/ \
+    && pip config set global.trusted-host pypi.render.com \
+    && pip config set global.cache-dir /opt/pip-cache
+
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/opt/pip-cache \
+    pip install --no-cache-dir -r requirements.txt
 
 # Install Crawl4AI setup and browsers
 RUN crawl4ai-setup

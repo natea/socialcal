@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: standard
     healthCheckPath: /admin/login/
-    buildCommand: docker build -t socialcal .
+    buildCommand: DOCKER_BUILDKIT=1 docker build -t socialcal .
     startCommand: docker run -p $PORT:$PORT socialcal
     autoDeploy: true
     dockerfilePath: ./Dockerfile
