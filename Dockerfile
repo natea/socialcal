@@ -1,28 +1,29 @@
 # Build stage
 FROM python:3.11-slim as builder
 
-# Install build dependencies with caching
-RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
-    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y \
+# Install system dependencies required for building Python packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
     gcc \
-    python3-dev
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Set work directory
+WORKDIR /app
 
-# Configure pip to use Render's PyPI mirror and caching
-RUN pip config set global.index-url https://pypi.render.com/simple/ \
-    && pip config set global.trusted-host pypi.render.com \
-    && pip config set global.cache-dir /opt/pip-cache
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
 
-# Install Python dependencies
+# Copy requirements
 COPY requirements.txt .
-RUN --mount=type=cache,target=/opt/pip-cache \
-    pip install --no-cache-dir -r requirements.txt
+
+# Install dependencies with caching
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 # Install Crawl4AI setup and browsers
 RUN crawl4ai-setup
@@ -30,20 +31,9 @@ RUN crawl4ai-setup
 # Final stage
 FROM python:3.11-slim
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Copy Crawl4AI and Playwright data from builder
-COPY --from=builder /root/.crawl4ai /root/.crawl4ai
-COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
-
-# Install system dependencies with caching
-RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
-    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y \
+# Install runtime system dependencies
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
@@ -67,7 +57,21 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libvulkan1 \
     xvfb \
     wget \
-    gnupg
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set work directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DISPLAY=:99 \
+    DBUS_SESSION_BUS_ADDRESS=/dev/null
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Create and switch to a non-root user
 RUN useradd -m -s /bin/bash app
@@ -84,28 +88,17 @@ RUN mkdir -p /home/app/.crawl4ai /home/app/.cache && \
 RUN mkdir -p /tmp/.X11-unix && \
     chmod 1777 /tmp/.X11-unix
 
-# Set up app directory
-WORKDIR /app
-
-# Set environment variables
-ENV PATH="/opt/venv/bin:${PATH}"
-ENV PYTHONPATH="/opt/venv/lib/python3.11/site-packages:${PYTHONPATH}"
-ENV DISPLAY=:99
-ENV PYTHONUNBUFFERED=1
-ENV DBUS_SESSION_BUS_ADDRESS=/dev/null
-
-# Switch to non-root user
-USER app
-
-# Copy project
+# Copy project files
 COPY --chown=app:app . .
+
+# Run migrations and collect static files
+RUN python manage.py collectstatic --noinput
+RUN python manage.py migrate
 
 # Create a script to run startup commands
 RUN echo '#!/bin/bash\n\
 Xvfb :99 -ac -screen 0 1280x1024x24 -nolisten tcp &\n\
 sleep 2\n\
-python manage.py collectstatic --no-input\n\
-python manage.py migrate\n\
 exec gunicorn socialcal.wsgi:application \
     --bind=0.0.0.0:$PORT \
     --workers=$WEB_CONCURRENCY \
@@ -120,5 +113,8 @@ exec gunicorn socialcal.wsgi:application \
     --log-level=info\n'\
 > /app/start.sh && chmod +x /app/start.sh
 
-# Run the startup script
+# Switch to non-root user
+USER app
+
+# Set the default command
 CMD ["/app/start.sh"]
