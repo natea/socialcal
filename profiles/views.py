@@ -10,29 +10,29 @@ def profile_list(request):
     profiles = Profile.objects.select_related('user').all()
     return render(request, 'profiles/list.html', {'profiles': profiles})
 
-def profile_detail(request, username):
-    user = get_object_or_404(User, username=username)
+def profile_detail(request, email):
+    user = get_object_or_404(User, email=email)
     profile = get_object_or_404(Profile, user=user)
     return render(request, 'profiles/detail.html', {'profile': profile})
 
 @login_required
-def profile_edit(request, username):
-    if request.user.username != username:
-        return redirect('profiles:detail', username=username)
+def profile_edit(request, email):
+    if request.user.email != email:
+        return redirect('profiles:detail', email=email)
     
     profile = get_object_or_404(Profile, user=request.user)
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
-            return redirect('profiles:detail', username=username)
+            return redirect('profiles:detail', email=email)
     else:
         form = ProfileForm(instance=profile)
     return render(request, 'profiles/edit.html', {'form': form})
 
 @login_required
-def profile_calendar(request, username):
-    user = get_object_or_404(User, username=username)
+def profile_calendar(request, email):
+    user = get_object_or_404(User, email=email)
     if request.user != user:
         # Add logic for public/private calendar viewing permissions
         pass

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Confirm Email Address{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title">Confirm Email Address</h2>
+
+                {% if confirmation %}
+                    <p class="card-text">Please confirm that <strong>{{ confirmation.email_address.email }}</strong> is your email address.</p>
+
+                    <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" type="submit">Confirm Email</button>
+                        </div>
+                    </form>
+
+                {% else %}
+                    <div class="alert alert-danger">
+                        {% if confirmation_expired %}
+                            <p>This email confirmation link has expired or is invalid. Please request a new confirmation email by signing in.</p>
+                        {% else %}
+                            <p>This email confirmation link is invalid. Please request a new confirmation email by signing in.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <a href="{% url 'account_login' %}" class="btn btn-primary">Sign In</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
