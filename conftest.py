@@ -1,7 +1,10 @@
+import pytest
 import os
 import django
-from django.conf import settings
+from django.core.management import call_command
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'socialcal.settings.test')
 
 def pytest_configure():
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'socialcal.settings')
     django.setup()
+    call_command('migrate')

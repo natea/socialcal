@@ -33,6 +33,7 @@ class Event(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'events'
         ordering = ['start_time']
         
     def __str__(self):
@@ -52,5 +53,4 @@ class Event(models.Model):
             self.venue_postal_code,
             self.venue_country
         ]
-        # Filter out empty parts and join with commas
         return ', '.join(filter(None, parts))
