@@ -25,8 +25,8 @@ FROM python:3.11-slim
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy Playwright browsers from builder
-COPY --from=builder /root/.cache/crawl4ai /root/.cache/crawl4ai
+# Copy Crawl4AI and Playwright data from builder
+COPY --from=builder /root/.crawl4ai /root/.crawl4ai
 COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 
 # Install system dependencies
@@ -62,11 +62,11 @@ RUN useradd -m -s /bin/bash app
 RUN mkdir -p /app /app/staticfiles /app/media
 RUN chown -R app:app /app
 
-# Copy Crawl4AI cache to app user's home
-RUN mkdir -p /home/app/.cache && \
-    cp -r /root/.cache/crawl4ai /home/app/.cache/ && \
+# Copy Crawl4AI and Playwright data to app user's home
+RUN mkdir -p /home/app/.crawl4ai /home/app/.cache && \
+    cp -r /root/.crawl4ai/* /home/app/.crawl4ai/ && \
     cp -r /root/.cache/ms-playwright /home/app/.cache/ && \
-    chown -R app:app /home/app/.cache
+    chown -R app:app /home/app/.crawl4ai /home/app/.cache
 
 # Set up X11 directories with proper permissions
 RUN mkdir -p /tmp/.X11-unix && \
