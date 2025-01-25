@@ -4,6 +4,12 @@ services:
     runtime: docker
     plan: standard
     healthCheckPath: /admin/login/
+    buildCommand: docker build -t socialcal .
+    startCommand: docker run -p $PORT:$PORT socialcal
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    numInstances: 1
     envVars:
       - key: PORT
         value: 8000
@@ -16,7 +22,7 @@ services:
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
-        value: 2
+        value: 4
       # Email configuration
       - key: RESEND_API_KEY
         sync: false
@@ -33,7 +39,11 @@ services:
         sync: false
       - key: OLOSTEP_API_KEY
         sync: false
+    disk:
+      name: socialcal-data
+      mountPath: /app/data
+      sizeGB: 1
 
 databases:
   - name: socialcal_db
-    ipAllowList: [] 
+    ipAllowList: []
