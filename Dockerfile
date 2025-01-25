@@ -1,11 +1,14 @@
 # Build stage
 FROM python:3.11-slim as builder
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
+# Install build dependencies with caching
+RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     gcc \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+    python3-dev
 
 # Create virtual environment
 RUN python -m venv /opt/venv
@@ -35,8 +38,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY --from=builder /root/.crawl4ai /root/.crawl4ai
 COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies with caching
+RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
@@ -60,8 +67,7 @@ RUN apt-get update && apt-get install -y \
     libvulkan1 \
     xvfb \
     wget \
-    gnupg \
-    && rm -rf /var/lib/apt/lists/*
+    gnupg
 
 # Create and switch to a non-root user
 RUN useradd -m -s /bin/bash app
