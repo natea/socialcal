@@ -71,8 +71,44 @@ def get_job_status(job_id):
     return pickle.loads(status) if status else None
 
 def set_job_status(job_id, status):
-    """Set job status in Redis cache"""
-    cache.set(f'scraping_job_{job_id}', pickle.dumps(status), timeout=3600)  # 1 hour timeout
+    """Set job status in Redis cache with progress information"""
+    if isinstance(status, dict) and 'status' in status:
+        # Initialize progress tracking if not present
+        if 'progress' not in status:
+            status['progress'] = {
+                'overall': 0,
+                'scraping': 0,
+                'processing': 0
+            }
+        if 'status_message' not in status:
+            status['status_message'] = {
+                'scraping': 'Initializing...',
+                'processing': 'Waiting...'
+            }
+        if 'stats' not in status:
+            status['stats'] = {
+                'found': 0,
+                'created': 0,
+                'updated': 0
+            }
+    cache.set(f'scraping_job_{job_id}', pickle.dumps(status), timeout=3600)
+
+def update_job_progress(job_id, progress_type, value, message=None):
+    """Update specific progress value for a job"""
+    status = get_job_status(job_id)
+    if status:
+        if progress_type in ['overall', 'scraping', 'processing']:
+            status['progress'][progress_type] = value
+        if message:
+            status['status_message'][progress_type.replace('overall', 'scraping')] = message
+        set_job_status(job_id, status)
+
+def update_job_stats(job_id, stats_update):
+    """Update job statistics"""
+    status = get_job_status(job_id)
+    if status:
+        status['stats'].update(stats_update)
+        set_job_status(job_id, status)
 
 @login_required
 def event_list(request):
@@ -134,12 +170,15 @@ def event_delete(request, pk):
 
 @login_required
 def event_import_status(request, job_id):
-    # Check if the job exists
+    """Get detailed status of an import job"""
     status = get_job_status(job_id)
     if not status:
         return JsonResponse({'error': 'Job not found'}, status=404)
     
-    # Return the job status
+    # Add log output if available
+    if log_stream.getvalue():
+        status['log'] = log_stream.getvalue()
+    
     return JsonResponse(status)
 
 @login_required
@@ -349,56 +388,88 @@ def event_export(request):
     response.write(cal.to_ical())
     return response
 
-def scrape_crawl4ai_events_async(source_url, job_id, user):
+async def scrape_crawl4ai_events_async(source_url, job_id, user):
+    """Asynchronous event scraping with progress tracking"""
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        events = loop.run_until_complete(scrape_crawl4ai_events(source_url))
-        loop.close()
+        # Initialize status
+        set_job_status(job_id, {
+            'status': 'started',
+            'events': [],
+            'message': 'Starting scraping process...'
+        })
+        
+        # Update scraping progress
+        update_job_progress(job_id, 'scraping', 10, 'Analyzing webpage...')
+        update_job_progress(job_id, 'overall', 5)
+        
+        # Start scraping
+        events = await scrape_crawl4ai_events(source_url)
+        
+        # Update progress after scraping
+        update_job_progress(job_id, 'scraping', 100, 'Scraping complete')
+        update_job_progress(job_id, 'overall', 50)
+        update_job_progress(job_id, 'processing', 10, 'Processing events...')
+        
+        # Update stats with found events
+        update_job_stats(job_id, {'found': len(events)})
         
         # Process events
         processed_events = []
         updated_count = 0
         created_count = 0
         
-        for event_data in events:
+        for idx, event_data in enumerate(events):
             try:
+                # Calculate processing progress
+                progress = int((idx + 1) / len(events) * 100)
+                update_job_progress(job_id, 'processing', progress, f'Processing event {idx + 1} of {len(events)}')
+                update_job_progress(job_id, 'overall', 50 + int(progress / 2))
+                
                 # Check for existing event
-                existing = Event.objects.filter(
+                existing = await filter_events(
                     user=user,
                     title=event_data.get('title'),
                     start_time=event_data.get('start_time')
-                ).first()
+                )
+                existing = existing[0] if existing else None
                 
                 if existing:
                     # Update existing event
                     for field, value in event_data.items():
                         if hasattr(existing, field):
                             setattr(existing, field, value)
-                    existing.save()
+                    await save_event(existing)
                     updated_count += 1
+                    update_job_stats(job_id, {'updated': updated_count})
                 else:
                     # Create new event
                     event = Event(user=user)
                     for field, value in event_data.items():
                         if hasattr(event, field):
                             setattr(event, field, value)
-                    event.save()
+                    await save_event(event)
                     created_count += 1
+                    update_job_stats(job_id, {'created': created_count})
                 
                 processed_events.append(event_data)
+                
             except Exception as e:
                 logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
         
-        # Update job status
-        set_job_status(job_id, {
+        # Update final status
+        status = {
             'status': 'complete',
             'events': processed_events,
-            'message': f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
-        })
+            'message': f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)',
+            'redirect_url': reverse('events:list')
+        }
+        set_job_status(job_id, status)
+        
     except Exception as e:
-        logger.error(f"Error in Crawl4AI scraping: {str(e)}\n{traceback.format_exc()}")
-        set_job_status(job_id, {
+        logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
+        error_status = {
             'status': 'error',
-            'message': str(e)
-        })
+            'message': str(e),
+            'log': log_stream.getvalue()
+        }
+        set_job_status(job_id, error_status)

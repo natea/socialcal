@@ -167,3 +167,6 @@ LOGIN_URL = 'account_login'
 SIMPLESCRAPER_API_KEY = get_env_variable('SIMPLESCRAPER_API_KEY')
 FIRECRAWL_API_KEY = get_env_variable('FIRECRAWL_API_KEY')
 GROQ_API_KEY = get_env_variable('GROQ_API_KEY')
+
+
+from .settings_psh import *

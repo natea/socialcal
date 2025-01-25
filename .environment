@@ -1,0 +1,18 @@
+# Set database environment variables
+export DB_HOST="$POSTGRESQL_HOST"
+export DB_PORT="$POSTGRESQL_PORT"
+export DB_PATH="$POSTGRESQL_PATH"
+export DB_DATABASE="$DB_PATH"
+export DB_USERNAME="$POSTGRESQL_USERNAME"
+export DB_PASSWORD="$POSTGRESQL_PASSWORD"
+export DB_SCHEME="postgresql"
+export DATABASE_URL="${DB_SCHEME}://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_PATH}"
+
+# Set Cache environment variables
+export CACHE_HOST="$REDIS_HOST"
+export CACHE_PORT="$REDIS_PORT"
+export CACHE_SCHEME="$REDIS_SCHEME"
+export CACHE_URL="${CACHE_SCHEME}://${CACHE_HOST}:${CACHE_PORT}"
+
+# Set Redis environment variables
+export REDIS_URL="$CACHE_URL"
