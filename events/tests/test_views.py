@@ -175,8 +175,17 @@ class TestEventViews:
                 'async': 'false'
             }
             response = authenticated_client.post(url, data)
+            # For non-AJAX requests, expect a redirect
             assert response.status_code == 302
             assert response.url == reverse('events:list')
+
+            # For AJAX requests, expect JSON response
+            response = authenticated_client.post(url, data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+            assert response.status_code == 200
+            response_data = json.loads(response.content)
+            assert response_data['status'] == 'complete'
+            assert 'redirect_url' in response_data
+            assert response_data['redirect_url'] == reverse('events:list')
 
     @pytest.mark.django_db(transaction=True)
     def test_event_import_crawl4ai_error(self, authenticated_client):
@@ -187,9 +196,11 @@ class TestEventViews:
                 'source_url': 'http://example.com',
                 'async': 'false'
             }
-            response = authenticated_client.post(url, data)
+            response = authenticated_client.post(url, data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
             assert response.status_code == 400
-            assert 'Error fetching events' in str(response.content)
+            response_data = json.loads(response.content)
+            assert response_data['status'] == 'error'
+            assert 'Error fetching events' in response_data['message']
 
     @pytest.mark.django_db(transaction=True)
     def test_event_import_async(self, authenticated_client):
@@ -208,10 +219,35 @@ class TestEventViews:
                 'end_time': timezone.now() + timezone.timedelta(hours=1)
             }]
     
-            response = authenticated_client.post(url, data)
-            assert response.status_code == 200  # Returns JSON response for async jobs
+            response = authenticated_client.post(url, data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+            assert response.status_code == 200
             response_data = json.loads(response.content)
+            assert response_data['status'] == 'started'
             assert 'job_id' in response_data
+
+    @pytest.mark.django_db(transaction=True)
+    def test_event_import_status(self, authenticated_client):
+        url = reverse('events:import')
+        data = {
+            'scraper_type': 'crawl4ai',
+            'source_url': 'http://example.com',
+            'async': 'true'
+        }
+
+        # First create an async job
+        response = authenticated_client.post(url, data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        assert response.status_code == 200
+        response_data = json.loads(response.content)
+        job_id = response_data['job_id']
+
+        # Then check its status
+        status_url = reverse('events:import_status', args=[job_id])
+        response = authenticated_client.get(status_url)
+        assert response.status_code == 200
+        status_data = json.loads(response.content)
+        assert 'status' in status_data
+        assert 'progress' in status_data
+        assert 'status_message' in status_data
 
     @pytest.mark.django_db(transaction=True)
     def test_event_import_ical(self, authenticated_client):
@@ -224,6 +260,7 @@ class TestEventViews:
         }]
 
         with patch('events.scrapers.ical_scraper.ICalScraper.process_events', return_value=mock_events):
+            # Test non-AJAX request
             data = {
                 'scraper_type': 'ical',
                 'source_url': 'http://example.com/calendar.ics'
@@ -231,6 +268,14 @@ class TestEventViews:
             response = authenticated_client.post(url, data)
             assert response.status_code == 302
             assert response.url == reverse('events:list')
+
+            # Test AJAX request
+            response = authenticated_client.post(url, data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+            assert response.status_code == 200
+            response_data = json.loads(response.content)
+            assert response_data['status'] == 'complete'
+            assert 'redirect_url' in response_data
+            assert response_data['redirect_url'] == reverse('events:list')
 
     @pytest.mark.django_db(transaction=True)
     def test_event_import_ical_error(self, authenticated_client):
@@ -242,6 +287,9 @@ class TestEventViews:
             }
             response = authenticated_client.post(url, data)
             assert response.status_code == 400
+            response_data = json.loads(response.content)
+            assert response_data['status'] == 'error'
+            assert 'Error fetching events' in response_data['message']
 
     @pytest.mark.django_db(transaction=True)
     def test_event_import_invalid_scraper(self, authenticated_client):

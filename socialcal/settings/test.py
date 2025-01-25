@@ -61,6 +61,16 @@ TIME_ZONE = 'America/New_York'
 # Test API Keys
 SIMPLESCRAPER_API_KEY = 'test_key'
 OPENAI_API_KEY = 'test_key'
+FIRECRAWL_API_KEY = 'test_key'
+GROQ_API_KEY = 'test_key'
+
+# Redis Cache Configuration for Testing
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/2',  # Using DB 2 for testing
+    }
+}
 
 # Test venue mapping
 EVENT_VENUE_MAPPING = {
