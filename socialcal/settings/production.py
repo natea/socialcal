@@ -49,4 +49,5 @@ if 'RESEND_API_KEY' in os.environ and 'RESEND_FROM_EMAIL' in os.environ:
 # API Keys - Make them optional
 SIMPLESCRAPER_API_KEY = os.environ.get('SIMPLESCRAPER_API_KEY', '')
 FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '') 
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')

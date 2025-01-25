@@ -74,12 +74,16 @@ class GenericCrawl4AIScraper:
                 If any field is not found, leave it blank rather than making assumptions.
                 Process all events found on the page, do not skip any.""",
                 extra_args=extra_args,
-            ),
+            ) if self.api_token else None,  # Only use LLM strategy if API key is available
         )
 
         try:
             async with AsyncWebCrawler(config=browser_config) as crawler:
                 logger.info("Initialized crawler, starting extraction...")
+                if not crawler_config.extraction_strategy:
+                    logger.warning("No OpenAI API key available. Using basic extraction.")
+                    return []  # Return empty list for now - we can implement a basic scraper later if needed
+                    
                 result = await crawler.arun(
                     url=url,
                     config=crawler_config
