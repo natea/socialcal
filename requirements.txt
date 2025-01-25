@@ -33,7 +33,7 @@ playwright>=1.49.0
 
 # Background Tasks
 celery==5.3.6
-redis==5.0.1
+redis>=5.0.1
 django-redis>=5.4.0
 hiredis>=2.2.3
 

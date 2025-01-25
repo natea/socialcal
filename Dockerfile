@@ -120,7 +120,10 @@ import time\n\
 import psycopg2\n\
 import os\n\
 import dj_database_url\n\
+import redis\n\
+from urllib.parse import urlparse\n\
 \n\
+# Check database connection\n\
 db_url = os.getenv("DATABASE_URL")\n\
 if not db_url:\n\
     print("DATABASE_URL not set")\n\
@@ -137,10 +140,30 @@ for i in range(30):\n\
             host=db_config["HOST"],\n\
             port=db_config["PORT"],\n\
         )\n\
+        print("Database connection successful")\n\
         break\n\
     except psycopg2.OperationalError:\n\
         print("Waiting for database...")\n\
         time.sleep(1)\n\
+\n\
+# Check Redis connection\n\
+redis_url = os.getenv("REDIS_URL")\n\
+if redis_url:\n\
+    try:\n\
+        url = urlparse(redis_url)\n\
+        r = redis.Redis(\n\
+            host=url.hostname,\n\
+            port=url.port,\n\
+            password=url.password,\n\
+            ssl=url.scheme == "rediss",\n\
+            socket_timeout=5,\n\
+        )\n\
+        r.ping()\n\
+        print("Redis connection successful")\n\
+    except Exception as e:\n\
+        print(f"Warning: Redis connection failed - {str(e)}")\n\
+else:\n\
+    print("Warning: REDIS_URL not set")\n\
 END\n\
 \n\
 # Run migrations\n\
