@@ -3,12 +3,10 @@ from .base import *
 import os
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# Use a default key during build for collectstatic, but require real key at runtime
 try:
     SECRET_KEY = get_env_variable('DJANGO_SECRET_KEY')
 except ImproperlyConfigured:
     if os.environ.get('COLLECTING_STATIC') == 'true':
-        # Only use this during collectstatic
         SECRET_KEY = 'django-insecure-build-key-for-collectstatic-only'
     else:
         raise
@@ -16,26 +14,15 @@ except ImproperlyConfigured:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['socialcal.onrender.com', '.onrender.com']  # Update with your domain
+ALLOWED_HOSTS = ['socialcal.onrender.com', '.onrender.com']
 
-# Database
-# Use Render PostgreSQL database
-if os.environ.get('COLLECTING_STATIC') == 'true':
-    # Use SQLite for collectstatic
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
-        }
-    }
-else:
-    # Use production database
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=get_env_variable('DATABASE_URL'),
-            conn_max_age=600
-        )
-    }
+# Database configuration
+DATABASES = {
+    'default': dj_database_url.config(
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
 
 # Security Settings
 SECURE_SSL_REDIRECT = True
@@ -51,11 +38,14 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Static files configuration
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'  
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
+
+# Sites framework
+SITE_ID = 1
 
 # Email Configuration - Make it optional
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Default to console backend

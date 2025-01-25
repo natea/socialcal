@@ -85,8 +85,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DISPLAY=:99 \
     DBUS_SESSION_BUS_ADDRESS=/dev/null \
     PATH="/opt/venv/bin:$PATH" \
-    DJANGO_SETTINGS_MODULE=socialcal.settings.production \
-    COLLECTING_STATIC=true
+    DJANGO_SETTINGS_MODULE=socialcal.settings.production
 
 # Create necessary directories for app user
 RUN mkdir -p /home/app/.crawl4ai /home/app/.cache/ms-playwright && \
@@ -107,21 +106,63 @@ COPY --chown=app:app . .
 # Switch to app user for remaining operations
 USER app
 
-# Collect static files with debug mode off
-RUN COLLECTING_STATIC=true DJANGO_DEBUG=False python manage.py collectstatic --noinput --clear
-
-# Create a script to run startup commands
+# Create initialization script
 RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Start Xvfb\n\
 Xvfb :99 -ac -screen 0 1280x1024x24 -nolisten tcp &\n\
+\n\
+# Wait for database\n\
+python << END\n\
+import sys\n\
+import time\n\
+import psycopg2\n\
+import os\n\
+import dj_database_url\n\
+\n\
+db_url = os.getenv("DATABASE_URL")\n\
+if not db_url:\n\
+    print("DATABASE_URL not set")\n\
+    sys.exit(1)\n\
+\n\
+db_config = dj_database_url.parse(db_url)\n\
+\n\
+for i in range(30):\n\
+    try:\n\
+        psycopg2.connect(\n\
+            dbname=db_config["NAME"],\n\
+            user=db_config["USER"],\n\
+            password=db_config["PASSWORD"],\n\
+            host=db_config["HOST"],\n\
+            port=db_config["PORT"],\n\
+        )\n\
+        break\n\
+    except psycopg2.OperationalError:\n\
+        print("Waiting for database...")\n\
+        time.sleep(1)\n\
+END\n\
+\n\
+# Run migrations\n\
 python manage.py migrate --noinput\n\
+\n\
+# Create default site\n\
+python manage.py shell -c "\
+from django.contrib.sites.models import Site;\
+Site.objects.get_or_create(id=1, defaults={\"domain\": \"socialcal.onrender.com\", \"name\": \"SocialCal\"})\
+"\n\
+\n\
+# Check OpenAI API key\n\
 if [ -n "$OPENAI_API_KEY" ]; then\n\
     echo "OpenAI API key is set"\n\
 else\n\
     echo "Warning: OpenAI API key is not set"\n\
 fi\n\
+\n\
+# Start gunicorn\n\
 exec gunicorn socialcal.wsgi:application \
     --bind=0.0.0.0:$PORT \
-    --workers=$WEB_CONCURRENCY \
+    --workers=${WEB_CONCURRENCY:-4} \
     --threads=4 \
     --worker-class=gthread \
     --worker-tmp-dir=/dev/shm \
@@ -129,8 +170,8 @@ exec gunicorn socialcal.wsgi:application \
     --log-file=- \
     --access-logfile=- \
     --error-logfile=- \
-    --log-level=info\n'\
-> /app/start.sh && chmod +x /app/start.sh
+    --log-level=info\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
 # Set the default command
 CMD ["/app/start.sh"]
