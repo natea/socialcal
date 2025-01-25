@@ -36,6 +36,7 @@ playwright>=1.49.0
 celery==5.3.6
 redis>=5.0.1
 hiredis>=2.2.3
+django-redis==5.4.0
 
 # Development and Testing
 pytest

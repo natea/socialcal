@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
@@ -12,12 +13,16 @@ def get_env_variable(var_name):
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Determine if we're running tests
+TESTING = 'test' in sys.argv
+
 SECRET_KEY = 'django-insecure-replace-with-your-secret-key'
 
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Modify installed apps based on whether we're testing
 INSTALLED_APPS = [
     # Django built-in apps
     'django.contrib.admin',
@@ -34,8 +39,13 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-    
-    # Local apps
+]
+
+if not TESTING:
+    INSTALLED_APPS += ['debug_toolbar']
+
+# Local apps
+INSTALLED_APPS += [
     'core.apps.CoreConfig',
     'calendar_app.apps.CalendarAppConfig',
     'events.apps.EventsConfig',
@@ -167,3 +177,19 @@ LOGIN_URL = 'account_login'
 SIMPLESCRAPER_API_KEY = get_env_variable('SIMPLESCRAPER_API_KEY')
 FIRECRAWL_API_KEY = get_env_variable('FIRECRAWL_API_KEY')
 GROQ_API_KEY = get_env_variable('GROQ_API_KEY')
+
+# Redis Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+# Debug Toolbar Configuration
+DEBUG_TOOLBAR_CONFIG = {
+    'IS_RUNNING_TESTS': True,  # Allow debug toolbar to work with tests
+}

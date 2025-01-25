@@ -176,7 +176,16 @@ async def _event_import(request):
                     set_job_status(job_id, {
                         'status': 'started',
                         'events': [],
-                        'message': 'Scraping started'
+                        'message': 'Scraping started',
+                        'progress': {
+                            'overall': 0,
+                            'scraping': 0,
+                            'processing': 0
+                        },
+                        'status_message': {
+                            'scraping': 'Initializing scraper...',
+                            'processing': 'Waiting to process events...'
+                        }
                     })
 
                     # Start the scraping in a background thread
@@ -350,19 +359,100 @@ def event_export(request):
     return response
 
 def scrape_crawl4ai_events_async(source_url, job_id, user):
+    loop = None
     try:
+        # Initialize status with progress tracking
+        set_job_status(job_id, {
+            'status': 'started',
+            'events': [],
+            'message': 'Starting scraping process...',
+            'progress': {
+                'overall': 0,
+                'scraping': 0,
+                'processing': 0
+            },
+            'status_message': {
+                'scraping': 'Initializing scraper...',
+                'processing': 'Waiting to process events...'
+            },
+            'stats': {
+                'found': 0,
+                'created': 0,
+                'updated': 0
+            }
+        })
+
+        # Start scraping
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        # Update progress before scraping
+        set_job_status(job_id, {
+            'status': 'running',
+            'progress': {
+                'overall': 10,
+                'scraping': 20,
+                'processing': 0
+            },
+            'status_message': {
+                'scraping': 'Fetching events from webpage...',
+                'processing': 'Waiting to process events...'
+            }
+        })
+        
         events = loop.run_until_complete(scrape_crawl4ai_events(source_url))
-        loop.close()
+        
+        # Update progress after scraping
+        set_job_status(job_id, {
+            'status': 'running',
+            'progress': {
+                'overall': 40,
+                'scraping': 100,
+                'processing': 0
+            },
+            'status_message': {
+                'scraping': 'Event scraping complete',
+                'processing': 'Starting to process events...'
+            },
+            'stats': {
+                'found': len(events),
+                'created': 0,
+                'updated': 0
+            }
+        })
         
         # Process events
         processed_events = []
         updated_count = 0
         created_count = 0
         
-        for event_data in events:
+        total_events = len(events)
+        for index, event_data in enumerate(events, 1):
             try:
+                # Calculate progress
+                processing_progress = int((index / total_events) * 100)
+                overall_progress = 40 + int((index / total_events) * 60)  # 40-100% range
+                
+                # Update progress during processing
+                set_job_status(job_id, {
+                    'status': 'running',
+                    'progress': {
+                        'overall': overall_progress,
+                        'scraping': 100,
+                        'processing': processing_progress
+                    },
+                    'status_message': {
+                        'scraping': 'Event scraping complete',
+                        'processing': f'Processing event {index} of {total_events}...'
+                    },
+                    'stats': {
+                        'found': total_events,
+                        'created': created_count,
+                        'updated': updated_count
+                    },
+                    'events': processed_events  # Add the processed events array to show events as they are processed
+                })
+                
                 # Check for existing event
                 existing = Event.objects.filter(
                     user=user,
@@ -390,15 +480,48 @@ def scrape_crawl4ai_events_async(source_url, job_id, user):
             except Exception as e:
                 logger.error(f"Error processing event: {str(e)}\n{traceback.format_exc()}")
         
-        # Update job status
-        set_job_status(job_id, {
+        # Update final status
+        final_status = {
             'status': 'complete',
             'events': processed_events,
-            'message': f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)'
-        })
+            'message': f'Successfully processed {len(processed_events)} events ({created_count} created, {updated_count} updated)',
+            'progress': {
+                'overall': 100,
+                'scraping': 100,
+                'processing': 100
+            },
+            'status_message': {
+                'scraping': 'Event scraping complete',
+                'processing': 'All events processed successfully'
+            },
+            'stats': {
+                'found': total_events,
+                'created': created_count,
+                'updated': updated_count
+            },
+            'redirect_url': reverse('events:list')
+        }
+        set_job_status(job_id, final_status)
+        
     except Exception as e:
-        logger.error(f"Error in Crawl4AI scraping: {str(e)}\n{traceback.format_exc()}")
-        set_job_status(job_id, {
+        logger.error(f"Error in scraping: {str(e)}\n{traceback.format_exc()}")
+        error_status = {
             'status': 'error',
-            'message': str(e)
-        })
+            'message': str(e),
+            'progress': {
+                'overall': 0,
+                'scraping': 0,
+                'processing': 0
+            },
+            'status_message': {
+                'scraping': 'Error occurred during scraping',
+                'processing': 'Process stopped due to error'
+            },
+            'log': log_stream.getvalue()
+        }
+        set_job_status(job_id, error_status)
+    finally:
+        if loop:
+            loop.stop()
+            loop.close()
+            asyncio.set_event_loop(None)  # Clear the event loop
