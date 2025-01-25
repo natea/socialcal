@@ -85,7 +85,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DISPLAY=:99 \
     DBUS_SESSION_BUS_ADDRESS=/dev/null \
     PATH="/opt/venv/bin:$PATH" \
-    DJANGO_SETTINGS_MODULE=socialcal.settings.production
+    DJANGO_SETTINGS_MODULE=socialcal.settings.production \
+    COLLECTING_STATIC=true
 
 # Create necessary directories for app user
 RUN mkdir -p /home/app/.crawl4ai /home/app/.cache/ms-playwright && \

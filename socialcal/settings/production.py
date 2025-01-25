@@ -3,7 +3,15 @@ from .base import *
 import os
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = get_env_variable('DJANGO_SECRET_KEY')
+# Use a default key during build for collectstatic, but require real key at runtime
+try:
+    SECRET_KEY = get_env_variable('DJANGO_SECRET_KEY')
+except ImproperlyConfigured:
+    if os.environ.get('COLLECTING_STATIC') == 'true':
+        # Only use this during collectstatic
+        SECRET_KEY = 'django-insecure-build-key-for-collectstatic-only'
+    else:
+        raise
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
