@@ -1,6 +1,7 @@
 from icalendar import Calendar, Event as IcalEvent
 from datetime import datetime
 from typing import List
+from events.models import Event
 
 class ICalGenerator:
     @staticmethod

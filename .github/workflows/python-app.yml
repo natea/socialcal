@@ -15,6 +15,18 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: socialcal.test_settings
+      SECRET_KEY: dummy-secret-key-for-tests
+      DEBUG: "True"
+      DATABASE_URL: sqlite:///test_db.sqlite3
+      OLOSTEP_API_KEY: dummy-olostep-key
+      OPENAI_API_KEY: dummy-openai-key
+      SIMPLESCRAPER_API_KEY: dummy-simplescraper-key
+      FIRECRAWL_API_KEY: dummy-firecrawl-key
+      GROQ_API_KEY: dummy-groq-key
+      GOOGLE_API_KEY: dummy-google-key
+
     services:
       redis:
         image: redis
@@ -30,11 +42,6 @@ jobs:
       with:
         python-version: "3.10"
         
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y postgresql postgresql-contrib
-        
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
@@ -45,10 +52,7 @@ jobs:
       run: |
         echo "Setting up test environment variables"
         cp .env-dummy .env
-        echo "DJANGO_SETTINGS_MODULE=socialcal.test_settings" >> .env
-        echo "SECRET_KEY=dummy-secret-key-for-tests" >> .env
-        echo "DEBUG=True" >> .env
-        echo "DATABASE_URL=sqlite:///test_db.sqlite3" >> .env
+        printenv | grep -E "DJANGO_|SECRET_|DEBUG|DATABASE_|.*_API_KEY" >> .env
         
     - name: Lint with flake8
       run: |

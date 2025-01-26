@@ -1,4 +1,5 @@
 import requests
+from django.conf import settings
 
 url_to_scrape = "https://en.wikipedia.org/wiki/Alexander_the_Great" # Here put the url that you want to scrape
 
@@ -21,7 +22,7 @@ def start_olostep(url):
        # "htmlTransformer": 'none'
     }
 
-    headers = {"Authorization": "Bearer " + OLOSTEP_API_KEY}
+    headers = {"Authorization": "Bearer " + settings.OLOSTEP_API_KEY}
 
     print("Starting Olostep...")
     response = requests.request(
