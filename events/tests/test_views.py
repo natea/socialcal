@@ -142,6 +142,14 @@ class TestEventViews:
 
     def test_event_delete_view(self, authenticated_client, event):
         url = reverse('events:delete', args=[event.pk])
+        
+        # First test the confirmation page (GET request)
+        response = authenticated_client.get(url)
+        assert response.status_code == 200
+        assert 'Delete Event' in str(response.content)
+        assert event.title in str(response.content)
+        
+        # Then test the actual deletion (POST request)
         response = authenticated_client.post(url)
         assert response.status_code == 302
         assert response.url == reverse('events:list')

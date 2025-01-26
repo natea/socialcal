@@ -130,7 +130,7 @@ def event_delete(request, pk):
         event.delete()
         messages.success(request, 'Event deleted successfully!')
         return redirect('events:list')
-    return render(request, 'events/confirm_delete.html', {'event': event})
+    return render(request, 'events/delete.html', {'event': event})
 
 @login_required
 def event_import_status(request, job_id):
