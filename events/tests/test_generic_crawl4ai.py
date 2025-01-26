@@ -91,13 +91,17 @@ class TestGenericCrawl4AIScraper(unittest.TestCase):
 
         # Test with environment variable
         with patch.dict(os.environ, {'OPENAI_API_KEY': 'env_token'}):
-            scraper = GenericCrawl4AIScraper()
-            self.assertEqual(scraper.api_token, "env_token")
+            with patch('events.scrapers.generic_crawl4ai.settings') as mock_settings:
+                mock_settings.OPENAI_API_KEY = None
+                scraper = GenericCrawl4AIScraper()
+                self.assertEqual(scraper.api_token, "env_token")
 
         # Test with no token
         with patch.dict(os.environ, {}, clear=True):
-            scraper = GenericCrawl4AIScraper()
-            self.assertIsNone(scraper.api_token)
+            with patch('events.scrapers.generic_crawl4ai.settings') as mock_settings:
+                mock_settings.OPENAI_API_KEY = None
+                scraper = GenericCrawl4AIScraper()
+                self.assertIsNone(scraper.api_token)
 
     def test_event_model_validation(self):
         """Test EventModel validation"""
