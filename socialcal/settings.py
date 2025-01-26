@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
 ]
 
-if not TESTING:
+# Only add debug_toolbar if we're not testing and DEBUG is True
+if not TESTING and DEBUG:
     INSTALLED_APPS += ['debug_toolbar']
 
 # Local apps
