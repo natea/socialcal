@@ -1,8 +1,10 @@
 {% extends "base.html" %}
+{% load tz %}
 
 {% block title %}Calendar - {{ current_date|date:"F Y" }}{% endblock %}
 
 {% block content %}
+{% timezone timezone %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>{{ current_date|date:"F Y" }}</h2>
     <div>
@@ -34,13 +36,15 @@
                         <a href="{% url 'events:create' %}" class="text-decoration-none">+</a>
                     </div>
                     {% for event in events %}
-                        {% if event.start_time.day == day %}
-                            <div class="small bg-primary text-white p-1 rounded mb-1">
-                                <a href="{% url 'events:detail' pk=event.pk %}" class="text-white text-decoration-none">
-                                    {{ event.title }}
-                                </a>
-                            </div>
-                        {% endif %}
+                        {% with event_date=event.start_time|date:"j" %}
+                            {% if event_date == day|stringformat:"i" %}
+                                <div class="small bg-primary text-white p-1 rounded mb-1">
+                                    <a href="{% url 'events:detail' pk=event.pk %}" class="text-white text-decoration-none">
+                                        {{ event.title }}
+                                    </a>
+                                </div>
+                            {% endif %}
+                        {% endwith %}
                     {% endfor %}
                 {% endif %}
             </td>
@@ -49,4 +53,5 @@
         {% endfor %}
     </tbody>
 </table>
+{% endtimezone %}
 {% endblock %} 

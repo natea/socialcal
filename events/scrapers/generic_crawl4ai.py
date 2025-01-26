@@ -78,7 +78,7 @@ class GenericCrawl4AIScraper:
                    The image URL should be the full URL path, not a relative path.
                 
                 Pay special attention to:
-                - Dates: Always return dates in YYYY-MM-DD format with the year 2025
+                - Dates: Always return dates in YYYY-MM-DD format with the year 
                 - Times: Return in HH:MM AM/PM format
                 - Image URLs: Must be full URL paths, not relative paths
                 
