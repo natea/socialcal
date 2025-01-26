@@ -26,9 +26,11 @@
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
+                        {% if user.email %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'profiles:detail' email=user.email %}">Profile</a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'account_logout' %}">Logout</a>
                         </li>
