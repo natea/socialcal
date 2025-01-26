@@ -45,7 +45,6 @@ jobs:
       run: |
         echo "Setting up test environment variables"
         cp .env-dummy .env
-        # Add dummy values for required environment variables
         echo "DJANGO_SETTINGS_MODULE=socialcal.test_settings" >> .env
         echo "SECRET_KEY=dummy-secret-key-for-tests" >> .env
         echo "DEBUG=True" >> .env

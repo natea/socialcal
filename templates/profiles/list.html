@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}User Profiles{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">User Profiles</h2>
+    
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for profile in profiles %}
+            <div class="col">
+                <div class="card h-100">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" class="card-img-top" alt="{{ profile.get_full_name }}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ profile.get_full_name }}</h5>
+                        <p class="text-muted">{{ profile.user.email }}</p>
+                        {% if profile.bio %}
+                            <p class="card-text">{{ profile.bio|truncatewords:30 }}</p>
+                        {% endif %}
+                        {% if profile.location %}
+                            <p class="card-text"><small class="text-muted">📍 {{ profile.location }}</small></p>
+                        {% endif %}
+                        <a href="{% url 'profiles:detail' email=profile.user.email %}" class="btn btn-primary">View Profile</a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <p>No profiles found.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

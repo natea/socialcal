@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ profile.get_full_name }}'s Calendar</h2>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            {% if events %}
+                <div class="list-group">
+                    {% for event in events %}
+                        <div class="list-group-item">
+                            <h5 class="mb-1">{{ event.title }}</h5>
+                            <p class="mb-1">
+                                <i class="bi bi-calendar"></i>
+                                {{ event.start_time|date:"F j, Y g:i A" }}
+                                {% if event.end_time %}
+                                    - {{ event.end_time|date:"g:i A" }}
+                                {% endif %}
+                            </p>
+                            {% if event.venue_name %}
+                                <p class="mb-1">
+                                    <i class="bi bi-geo-alt"></i>
+                                    {{ event.venue_name }}
+                                    {% if event.venue_city %}
+                                        <span class="text-muted">
+                                            • {{ event.venue_city }}{% if event.venue_state %}, {{ event.venue_state }}{% endif %}
+                                        </span>
+                                    {% endif %}
+                                </p>
+                            {% endif %}
+                            {% if not event.is_public %}
+                                <span class="badge bg-secondary">Private</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">No upcoming events.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
