@@ -22,15 +22,15 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
-    - name: Load .env file
-      uses: goanpeca/setup-envfile@v1
-      with:
-        envfile-path: .env-dummy
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
+        pip install flake8 pytest python-dotenv
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Load environment variables
+      run: |
+        echo "Loading environment variables from .env"
+        python -c "from dotenv import load_dotenv; load_dotenv('.env-sample')"
     - name: Lint with flake8
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
