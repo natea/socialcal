@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}{{ profile.user.username }}'s Profile{% endblock %}
+{% block title %}{{ profile.get_full_name }}'s Profile{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-4">
         <div class="card">
             {% if profile.avatar %}
-                <img src="{{ profile.avatar.url }}" class="card-img-top" alt="{{ profile.user.username }}">
+                <img src="{{ profile.avatar.url }}" class="card-img-top" alt="{{ profile.get_full_name }}">
             {% endif %}
             <div class="card-body">
-                <h5 class="card-title">{{ profile.user.username }}</h5>
+                <h5 class="card-title">{{ profile.get_full_name }}</h5>
+                <p class="text-muted">{{ profile.user.email }}</p>
                 {% if profile.bio %}
                     <p class="card-text">{{ profile.bio }}</p>
                 {% endif %}
@@ -18,25 +19,52 @@
                     <p class="card-text"><small class="text-muted">📍 {{ profile.location }}</small></p>
                 {% endif %}
                 {% if user == profile.user %}
-                    <a href="{% url 'profiles:edit' username=user.username %}" class="btn btn-primary">Edit Profile</a>
+                    <a href="{% url 'profiles:edit' email=user.email %}" class="btn btn-primary">Edit Profile</a>
                 {% endif %}
             </div>
         </div>
     </div>
     <div class="col-md-8">
-        <h3>Upcoming Events</h3>
-        {% for event in events %}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="card-title">{{ event.title }}</h5>
-                    <h6 class="card-subtitle mb-2 text-muted">{{ event.start_time|date:"F j, Y g:i A" }}</h6>
-                    <p class="card-text">{{ event.description|truncatewords:30 }}</p>
-                    <a href="{% url 'events:detail' pk=event.pk %}" class="card-link">View Details</a>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Upcoming Events</h3>
+            {% if user == profile.user %}
+                <div class="text-muted">
+                    <small>
+                        Calendar is {% if profile.calendar_public %}public{% else %}private{% endif %}
+                        <a href="{% url 'profiles:edit' email=user.email %}" class="ms-2">
+                            <i class="bi bi-gear"></i> Change
+                        </a>
+                    </small>
                 </div>
+            {% endif %}
+        </div>
+
+        {% if can_view_events %}
+            {% if events %}
+                {% for event in events %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ event.title }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                {{ event.start_time|date:"F j, Y g:i A" }}
+                                {% if event.venue_name %}
+                                    <br><small>📍 {{ event.venue_name }}</small>
+                                {% endif %}
+                            </h6>
+                            <p class="card-text">{{ event.description|truncatewords:30 }}</p>
+                            <a href="{% url 'events:detail' pk=event.pk %}" class="card-link">View Details</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No upcoming events.</p>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-lock"></i>
+                This user's calendar is private.
             </div>
-        {% empty %}
-            <p>No upcoming events.</p>
-        {% endfor %}
+        {% endif %}
     </div>
 </div>
 {% endblock %} 
