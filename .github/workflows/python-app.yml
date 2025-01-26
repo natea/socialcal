@@ -48,6 +48,11 @@ jobs:
         pip install flake8 pytest python-dotenv
         pip install -r requirements.txt
         
+    - name: Install Playwright browsers
+      run: |
+        playwright install chromium
+        playwright install-deps chromium
+        
     - name: Set up environment variables
       run: |
         echo "Setting up test environment variables"
