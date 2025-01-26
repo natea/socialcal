@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Events{% endblock %}
+{% block title %}Discover Local Events{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Events</h2>
+    <div>
+        <h2>Discover Local Events</h2>
+        <p class="lead text-muted mb-0">Find and support local events in your community</p>
+    </div>
     <div>
         <a href="{% url 'events:import' %}" class="btn btn-outline-primary me-2">Import Events</a>
         <a href="{% url 'events:create' %}" class="btn btn-primary">Create Event</a>
