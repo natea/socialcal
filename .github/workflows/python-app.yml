@@ -30,7 +30,7 @@ jobs:
     - name: Load environment variables
       run: |
         echo "Loading environment variables from .env"
-        python -c "from dotenv import load_dotenv; load_dotenv('.env-sample')"
+        python -c "from dotenv import load_dotenv; load_dotenv('.env-dummy')"
     - name: Lint with flake8
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
