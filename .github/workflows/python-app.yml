@@ -72,4 +72,4 @@ jobs:
         
     - name: Test with pytest
       run: |
-        pytest -v --ds=socialcal.test_settings
+        python -m pytest -v --ds=socialcal.test_settings 2>/dev/null || exit $?
