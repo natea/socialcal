@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("events", "0006_event_spotify_artist_id"),
         ("events", "0006_event_spotify_artist_id_and_more"),
     ]
 
