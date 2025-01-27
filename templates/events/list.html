@@ -10,6 +10,11 @@
         <p class="lead text-muted mb-0">Find and support local events in your community</p>
     </div>
     <div>
+        <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}"
+           class="btn btn-outline-secondary me-2"
+           onclick="this.href = this.href.replace('http', 'webcal');">
+            <i class="bi bi-calendar-event"></i> Add to Calendar
+        </a>
         <a href="{% url 'events:import' %}" class="btn btn-outline-primary me-2">Import Events</a>
         <a href="{% url 'events:create' %}" class="btn btn-primary">Create Event</a>
     </div>
