@@ -22,6 +22,7 @@ import pickle
 from threading import Lock
 from django.urls import reverse
 import re
+from django.db import models
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -79,7 +80,32 @@ def set_job_status(job_id, status):
 @login_required
 def event_list(request):
     events = Event.objects.filter(user=request.user)
-    return render(request, 'events/list.html', {'events': events})
+    
+    # Get search query and venue filter from query params
+    search_query = request.GET.get('q')
+    venue_filter = request.GET.get('venue')
+    
+    # Apply search filter if provided
+    if search_query:
+        events = events.filter(
+            models.Q(title__icontains=search_query) |
+            models.Q(description__icontains=search_query) |
+            models.Q(venue_name__icontains=search_query)
+        )
+    
+    # Apply venue filter if provided
+    if venue_filter:
+        events = events.filter(venue_name__icontains=venue_filter)
+    
+    # Get distinct venues for the filter dropdown
+    venues = Event.objects.filter(user=request.user).exclude(venue_name='').values_list('venue_name', flat=True).distinct().order_by('venue_name')
+    
+    return render(request, 'events/list.html', {
+        'events': events,
+        'venues': venues,
+        'selected_venue': venue_filter,
+        'search_query': search_query
+    })
 
 @login_required
 def event_create(request):

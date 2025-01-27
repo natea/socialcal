@@ -51,6 +51,153 @@ class TestEventViews:
         assert response.status_code == 200
         assert 'Test Event' in str(response.content)
 
+    def test_event_list_search(self, authenticated_client, user):
+        # Create test events
+        Event.objects.create(
+            user=user,
+            title="Birthday Party",
+            description="A fun celebration",
+            venue_name="Home",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=2)
+        )
+        Event.objects.create(
+            user=user,
+            title="Tech Conference",
+            description="Annual tech gathering",
+            venue_name="Convention Center",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=4)
+        )
+        Event.objects.create(
+            user=user,
+            title="Music Festival",
+            description="Live bands and fun",
+            venue_name="City Park",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=8)
+        )
+
+        # Test title search
+        response = authenticated_client.get(reverse('events:list') + '?q=Tech')
+        assert response.status_code == 200
+        content = str(response.content)
+        assert 'Tech Conference' in content
+        assert 'Birthday Party' not in content
+        assert 'Showing 1 event' in content
+
+        # Test description search
+        response = authenticated_client.get(reverse('events:list') + '?q=fun')
+        assert response.status_code == 200
+        content = str(response.content)
+        assert 'Birthday Party' in content
+        assert 'Music Festival' in content
+        assert 'Tech Conference' not in content
+        assert 'Showing 2 events' in content
+
+        # Test venue search
+        response = authenticated_client.get(reverse('events:list') + '?q=center')
+        assert response.status_code == 200
+        content = str(response.content)
+        assert 'Tech Conference' in content
+        assert 'Birthday Party' not in content
+        assert 'Showing 1 event' in content
+
+    def test_event_list_venue_filter(self, authenticated_client, user):
+        # Create test events
+        Event.objects.create(
+            user=user,
+            title="Morning Meeting",
+            venue_name="Conference Room A",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1)
+        )
+        Event.objects.create(
+            user=user,
+            title="Afternoon Meeting",
+            venue_name="Conference Room A",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1)
+        )
+        Event.objects.create(
+            user=user,
+            title="Team Lunch",
+            venue_name="Cafeteria",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1)
+        )
+
+        # Test venue filter
+        response = authenticated_client.get(reverse('events:list') + '?venue=Conference Room A')
+        assert response.status_code == 200
+        content = str(response.content)
+        assert 'Morning Meeting' in content
+        assert 'Afternoon Meeting' in content
+        assert 'Team Lunch' not in content
+        assert 'Showing 2 events at Conference Room A' in content
+
+    def test_event_list_combined_search_and_filter(self, authenticated_client, user):
+        # Create test events
+        Event.objects.create(
+            user=user,
+            title="Morning Team Meeting",
+            description="Team A sync",
+            venue_name="Conference Room A",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1)
+        )
+        Event.objects.create(
+            user=user,
+            title="Afternoon Team Meeting",
+            description="Team B sync",
+            venue_name="Conference Room A",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1)
+        )
+        Event.objects.create(
+            user=user,
+            title="Team Lunch",
+            description="Team A lunch",
+            venue_name="Cafeteria",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1)
+        )
+
+        # Test combined search and venue filter
+        response = authenticated_client.get(reverse('events:list') + '?q=Team A&venue=Conference Room A')
+        assert response.status_code == 200
+        content = str(response.content)
+        assert 'Morning Team Meeting' in content
+        assert 'Afternoon Team Meeting' not in content
+        assert 'Team Lunch' not in content
+        assert 'Showing 1 event' in content
+        assert 'at Conference Room A' in content
+        assert 'matching "Team A"' in content
+
+    def test_event_list_empty_results(self, authenticated_client, user):
+        # Create a test event
+        Event.objects.create(
+            user=user,
+            title="Test Event",
+            venue_name="Test Venue",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1)
+        )
+
+        # Test search with no matches
+        response = authenticated_client.get(reverse('events:list') + '?q=nonexistent')
+        assert response.status_code == 200
+        content = str(response.content)
+        assert 'No events found' in content
+        assert 'Showing 0 events' in content
+
+        # Test venue filter with no matches
+        response = authenticated_client.get(reverse('events:list') + '?venue=Nonexistent Venue')
+        assert response.status_code == 200
+        content = str(response.content)
+        assert 'No events found' in content
+        assert 'Showing 0 events' in content
+
     def test_event_list_view_unauthenticated(self, unauthenticated_client):
         url = reverse('events:list')
         response = unauthenticated_client.get(url)
