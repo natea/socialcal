@@ -67,6 +67,10 @@ FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 OLOSTEP_API_KEY = os.environ.get('OLOSTEP_API_KEY', '')
 
+# Spotify API Configuration
+SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
+
 # OpenAI Configuration
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 if not OPENAI_API_KEY:
