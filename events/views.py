@@ -262,7 +262,8 @@ async def _event_import(request):
                             return JsonResponse({
                                 'status': 'complete',
                                 'message': success_message,
-                                'redirect_url': reverse('events:list')
+                                'redirect_url': reverse('events:list'),
+                                'events': processed_events
                             })
                         else:
                             return redirect('events:list')
@@ -332,7 +333,8 @@ async def _event_import(request):
                         return JsonResponse({
                             'status': 'complete',
                             'message': success_message,
-                            'redirect_url': reverse('events:list')
+                            'redirect_url': reverse('events:list'),
+                            'events': processed_events
                         })
                     else:
                         return redirect('events:list')
@@ -430,6 +432,7 @@ def add_spotify_track_to_event(event_data):
     spotify_defaults = {
         'spotify_track_id': '',
         'spotify_track_name': '',
+        'spotify_artist_id': '',
         'spotify_artist_name': '',
         'spotify_artist_id': '',
         'spotify_preview_url': '',
@@ -472,6 +475,7 @@ def add_spotify_track_to_event(event_data):
             event_data.update({
                 'spotify_track_id': track['id'],
                 'spotify_track_name': track['name'],
+                'spotify_artist_id': track.get('artist_id', ''),
                 'spotify_artist_name': track['artist'],
                 'spotify_artist_id': track['artist_id'],
                 'spotify_preview_url': track['preview_url'] or '',
