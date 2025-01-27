@@ -66,6 +66,10 @@ GROQ_API_KEY = 'test-key'
 RESEND_API_KEY = 'test-key'
 RESEND_FROM_EMAIL = 'test@example.com'
 
+# Spotify settings for testing
+SPOTIFY_CLIENT_ID = 'test_client_id'
+SPOTIFY_CLIENT_SECRET = 'test_client_secret'
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',

@@ -3,63 +3,113 @@
 {% block title %}{{ event.title }}{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-body">
-        <h2 class="card-title">{{ event.title }}</h2>
-        <h6 class="card-subtitle mb-2 text-muted">
-            {{ event.start_time|date:"F j, Y g:i A" }} - 
-            {{ event.end_time|date:"F j, Y g:i A" }}
-        </h6>
-        {% if event.location %}
-            <p class="card-text"><strong>Location:</strong> {{ event.location }}</p>
-        {% endif %}
-        {% if event.url %}
-            <p class="card-text">
-                <strong>Event Link:</strong> 
-                <a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">
-                    Buy Tickets
-                </a>
-            </p>
-        {% endif %}
-        
-        {% if event.spotify_track_id %}
-        <div class="mt-4">
-            <h5>Featured Music</h5>
-            <div class="spotify-embed">
-                <iframe src="https://open.spotify.com/embed/track/{{ event.spotify_track_id }}"
-                        width="100%"
-                        height="80"
-                        frameborder="0"
-                        allowtransparency="true"
-                        allow="encrypted-media">
-                </iframe>
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">{{ event.title }}</h1>
+                    
+                    <!-- Event Details -->
+                    <div class="mb-4">
+                        <p class="text-muted">
+                            {{ event.start_time|date:"l, F j, Y" }} at {{ event.start_time|date:"g:i A" }}
+                            {% if event.end_time %}
+                                to {{ event.end_time|date:"g:i A" }}
+                            {% endif %}
+                            ({{ event.timezone }})
+                        </p>
+                        
+                        {% if event.description %}
+                            <div class="mb-3">{{ event.description|linebreaks }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Venue Information -->
+                    <div class="mb-4">
+                        <h4>Location</h4>
+                        <p class="mb-1">{{ event.venue_name }}</p>
+                        <p class="mb-1">{{ event.venue_address }}</p>
+                        <p class="mb-0">
+                            {{ event.venue_city }}, {{ event.venue_state }} {{ event.venue_postal_code }}
+                            {% if event.venue_country %}
+                                <br>{{ event.venue_country }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <!-- Links -->
+                    {% if event.url %}
+                        <div class="mb-4">
+                            <a href="{{ event.url }}" target="_blank" class="btn btn-primary">
+                                Visit Event Website
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
-            <p class="text-muted mt-2">
-                <small>
-                    {{ event.spotify_track_name }} by {{ event.spotify_artist_name }}
-                    <a href="{{ event.spotify_external_url }}" target="_blank" rel="noopener noreferrer">
-                        <i class="bi bi-spotify"></i> Listen on Spotify
-                    </a>
-                </small>
-            </p>
         </div>
-        {% endif %}
         
-        <p class="card-text">{{ event.description|linebreaks }}</p>
-        
-        {% if user == event.user %}
-            <div class="mt-3">
-                <a href="{% url 'events:edit' pk=event.pk %}" class="btn btn-primary">Edit</a>
-                <a href="{% url 'events:delete' pk=event.pk %}" class="btn btn-danger">Delete</a>
+        <div class="col-md-4">
+            <!-- Event Image -->
+            {% if event.image_url %}
+                <div class="card mb-4">
+                    <img src="{{ event.image_url }}" class="card-img-top" alt="{{ event.title }}">
+                </div>
+            {% endif %}
+            
+            <!-- Spotify Widget -->
+            {% if event.spotify_artist_id %}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Featured Artist</h5>
+                        <div class="spotify-artist-embed">
+                            <iframe style="border-radius:12px" 
+                                    src="https://open.spotify.com/embed/artist/{{ event.spotify_artist_id }}?utm_source=generator&theme=0"
+                                    width="100%" 
+                                    height="352" 
+                                    frameBorder="0" 
+                                    allowfullscreen="" 
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                    loading="lazy">
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+            {% elif event.spotify_track_id %}
+                <!-- Fallback to track widget if no artist ID -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Featured Track</h5>
+                        <div class="spotify-track-embed">
+                            <iframe style="border-radius:12px" 
+                                    src="https://open.spotify.com/embed/track/{{ event.spotify_track_id }}?utm_source=generator&theme=0"
+                                    width="100%" 
+                                    height="152" 
+                                    frameBorder="0" 
+                                    allowfullscreen="" 
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                    loading="lazy">
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2">
+                <a href="{% url 'events:edit' event.pk %}" class="btn btn-outline-primary">Edit Event</a>
+                <a href="{% url 'events:delete' event.pk %}" class="btn btn-outline-danger">Delete Event</a>
+                <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Back to Events</a>
             </div>
-        {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-.spotify-embed {
+.spotify-artist-embed {
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);

@@ -397,9 +397,17 @@ def get_artist_from_event(event_data):
     
     # Common patterns in music event titles
     patterns = [
-        r"(.+?)\s*(?:live at|at|@|presents|featuring|feat\.|ft\.|with)",  # Artist before venue/location
-        r"(?:presents|featuring|feat\.|ft\.|with)\s*(.+)",  # Artist after presenting words
-        r"(.+?)\s*(?:in concert|concert|performance|show|gig)"  # Artist before event type
+        # Full ensemble/band name patterns
+        r"^([\w\s]+(?:Orchestra|Band|Ensemble|Quartet|Trio|Quintet|Sextet|Septet|Octet|Group|Seven))\s*(?:[-–]\s*|:|$)",
+        r"^([\w\s]+(?:Orchestra|Band|Ensemble|Quartet|Trio|Quintet|Sextet|Septet|Octet|Group|Seven))\s+(?:presents|performs|in|at)",
+        # Artist with location/venue
+        r"^(.+?)\s+(?:live at|at|@)",
+        # Artist after presenting words
+        r"(?:presents|featuring|feat\.|ft\.|with)\s+(.+?)(?:\s+at|\s+in|\s*$)",
+        # Artist before event type
+        r"^(.+?)\s+(?:in concert|concert|performance|show|gig)",
+        # Artist with descriptive text
+        r"^(.+?),\s*(?:live|in concert|performing)"
     ]
     
     for pattern in patterns:
@@ -407,8 +415,14 @@ def get_artist_from_event(event_data):
         if match:
             return match.group(1).strip()
     
-    # If no patterns match, return the whole title
-    return title
+    # If no patterns match, return the first part of the title before any common separators
+    separators = [' at ', ' in ', ' with ', ' - ', ' @ ', ' presents ', ': ']
+    for separator in separators:
+        if separator.lower() in title.lower():
+            return title.split(separator)[0].strip()
+    
+    # If still no match, return the whole title
+    return title.strip()
 
 def add_spotify_track_to_event(event_data):
     """Search for and add a Spotify track to the event data if it's a music event."""
@@ -417,6 +431,7 @@ def add_spotify_track_to_event(event_data):
         'spotify_track_id': '',
         'spotify_track_name': '',
         'spotify_artist_name': '',
+        'spotify_artist_id': '',
         'spotify_preview_url': '',
         'spotify_external_url': ''
     }
@@ -425,21 +440,55 @@ def add_spotify_track_to_event(event_data):
     if not is_music_event(event_data):
         return event_data
         
+    # Check if we already have Spotify data
+    if event_data.get('spotify_track_id') and event_data.get('spotify_artist_id'):
+        return event_data
+        
+    # Check for cached data in session
+    if 'session' in event_data and isinstance(event_data['session'], dict):
+        cache_key = f'spotify_data_{event_data.get("id")}'
+        cached_data = event_data['session'].get(cache_key)
+        if cached_data:
+            event_data.update({
+                'spotify_track_id': cached_data['track_id'],
+                'spotify_track_name': cached_data['track_name'],
+                'spotify_artist_name': cached_data['artist_name'],
+                'spotify_artist_id': cached_data['artist_id'],
+                'spotify_preview_url': cached_data['preview_url'],
+                'spotify_external_url': cached_data['external_url']
+            })
+            return event_data
+        
     artist = get_artist_from_event(event_data)
     if not artist:
         return event_data
         
     try:
-        # Search for the artist's top track
-        track = SpotifyAPI.search_track(f"artist:{artist}")
-        if track:
+        # Search for tracks by the specific artist
+        tracks = SpotifyAPI.search_track("", artist_name=artist)
+        if tracks and len(tracks) > 0:
+            # Use the first track that matches
+            track = tracks[0]
             event_data.update({
                 'spotify_track_id': track['id'],
                 'spotify_track_name': track['name'],
                 'spotify_artist_name': track['artist'],
+                'spotify_artist_id': track['artist_id'],
                 'spotify_preview_url': track['preview_url'] or '',
                 'spotify_external_url': track['external_url']
             })
+            
+            # Cache the results in the session if available
+            if 'session' in event_data and isinstance(event_data['session'], dict):
+                cache_key = f'spotify_data_{event_data.get("id")}'
+                event_data['session'][cache_key] = {
+                    'track_id': track['id'],
+                    'track_name': track['name'],
+                    'artist_name': track['artist'],
+                    'artist_id': track['artist_id'],
+                    'preview_url': track['preview_url'] or '',
+                    'external_url': track['external_url']
+                }
     except Exception as e:
         logger.error(f"Error searching Spotify for artist {artist}: {str(e)}")
         # Keep the default empty values on error
@@ -608,8 +657,8 @@ def spotify_search(request):
     if not query:
         return JsonResponse({'error': 'No search query provided'}, status=400)
         
-    track = SpotifyAPI.search_track(query)
-    if not track:
+    tracks = SpotifyAPI.search_track(query)
+    if not tracks:
         return JsonResponse({'error': 'No tracks found'}, status=404)
         
-    return JsonResponse(track)
+    return JsonResponse(tracks, safe=False)
