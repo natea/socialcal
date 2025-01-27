@@ -14,6 +14,50 @@
     </div>
 </div>
 
+<!-- Search and Filters -->
+<div class="row mb-4">
+    <div class="col-md-8 mb-3 mb-md-0">
+        <form method="get" class="d-flex gap-2">
+            <div class="flex-grow-1">
+                <div class="input-group">
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" 
+                           name="q" 
+                           class="form-control" 
+                           placeholder="Search events by title, description or venue..." 
+                           value="{{ search_query|default:'' }}"
+                           aria-label="Search events">
+                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                </div>
+            </div>
+            <select name="venue" class="form-select" style="width: auto;" onchange="this.form.submit()">
+                <option value="">All Venues</option>
+                {% for venue in venues %}
+                    <option value="{{ venue }}" {% if venue == selected_venue %}selected{% endif %}>{{ venue }}</option>
+                {% endfor %}
+            </select>
+            {% if search_query or selected_venue %}
+                <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Clear All</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="col-md-4">
+        <p class="mb-0 mt-2">
+            {% if selected_venue and not search_query %}
+                Showing {{ events|length }} event{{ events|length|pluralize }} at {{ selected_venue }}
+            {% elif search_query and not selected_venue %}
+                Showing {{ events|length }} event{{ events|length|pluralize }} matching "{{ search_query }}"
+            {% elif selected_venue and search_query %}
+                Showing {{ events|length }} event{{ events|length|pluralize }} at {{ selected_venue }} matching "{{ search_query }}"
+            {% else %}
+                Showing all {{ events|length }} event{{ events|length|pluralize }}
+            {% endif %}
+        </p>
+    </div>
+</div>
+
 <div class="row">
     {% for event in events %}
     <div class="col-md-6 mb-4">
