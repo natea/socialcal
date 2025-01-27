@@ -27,6 +27,13 @@ class Event(models.Model):
     url = models.URLField(max_length=500, blank=True)
     image_url = models.URLField(max_length=500, blank=True)
     
+    # Spotify Integration
+    spotify_track_id = models.CharField(max_length=100, blank=True)
+    spotify_track_name = models.CharField(max_length=200, blank=True)
+    spotify_artist_name = models.CharField(max_length=200, blank=True)
+    spotify_preview_url = models.URLField(max_length=500, blank=True)
+    spotify_external_url = models.URLField(max_length=500, blank=True)
+    
     # Settings
     is_public = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

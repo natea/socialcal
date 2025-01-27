@@ -12,4 +12,5 @@ urlpatterns = [
     path('import/', views.event_import, name='import'),
     path('import/status/<str:job_id>/', views.event_import_status, name='import_status'),
     path('export/', views.event_export, name='export'),
+    path('spotify/search/', views.spotify_search, name='spotify_search'),
 ]
