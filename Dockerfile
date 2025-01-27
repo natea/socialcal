@@ -74,7 +74,8 @@ RUN useradd -m -s /bin/bash app
 # Set work directory and create necessary directories
 WORKDIR /app
 RUN mkdir -p /app/staticfiles /app/media && \
-    chown -R app:app /app
+    chown -R app:app /app && \
+    chmod -R 755 /app/staticfiles
 
 # Create virtual environment
 COPY --from=builder /opt/venv /opt/venv

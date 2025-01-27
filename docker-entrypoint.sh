@@ -60,6 +60,10 @@ END
 # Run migrations
 python manage.py migrate --noinput
 
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
 # Create default site
 python manage.py shell -c "from django.contrib.sites.models import Site;Site.objects.get_or_create(id=1, defaults={'domain': 'socialcal.onrender.com', 'name': 'SocialCal'})"
 
