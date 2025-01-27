@@ -55,7 +55,7 @@ class GenericCrawl4AIScraper:
             viewport_height=1080
         )
 
-        extra_args = {"temperature": 0, "top_p": 0.9, "max_tokens": 2000}
+        extra_args = {"temperature": 0, "top_p": 0.9, "max_tokens": 4000}
 
         crawler_config = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
@@ -67,7 +67,7 @@ class GenericCrawl4AIScraper:
                 api_token=self.api_token,
                 schema=EventModel.model_json_schema(),
                 extraction_type="schema",
-                instruction="""From the crawled content, carefully extract all events. For each event, you must find:
+                instruction="""From the crawled content, carefully extract ALL events without skipping any. You MUST process every single event on the page, including canceled events. For each event, you must find:
                 1. Title of the event
                 2. Full description
                 3. Date - IMPORTANT: All dates should be for the current year. If no year is specified in the event listing, assume current year.
@@ -81,9 +81,10 @@ class GenericCrawl4AIScraper:
                 - Dates: Always return dates in YYYY-MM-DD format with the year 
                 - Times: Return in HH:MM AM/PM format
                 - Image URLs: Must be full URL paths, not relative paths
+                - Canceled events: Include these in the extraction, do not skip them
                 
                 If any field is not found, leave it blank rather than making assumptions.
-                Process all events found on the page, do not skip any.""",
+                You MUST process and return ALL events found on the page. Do not limit the number of events.""",
                 extra_args=extra_args,
             ) if self.api_token else None,  # Only use LLM strategy if API key is available
         )
