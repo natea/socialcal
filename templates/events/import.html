@@ -353,9 +353,6 @@ document.querySelectorAll('.import-form').forEach(form => {
                             showSuccess(statusData.message);
                             resetForm();
                             
-                            // Remove any existing "View Events List" buttons before adding a new one
-                            document.querySelectorAll('.view-events-btn').forEach(btn => btn.remove());
-                            
                             // Add View Events button
                             const viewEventsBtn = document.createElement('a');
                             viewEventsBtn.href = statusData.redirect_url;
@@ -416,22 +413,25 @@ function updateStats(stats) {
 function updateEventsList(events) {
     const eventsList = document.getElementById('eventsList');
     
+    // Clear existing events if this is a new batch
+    if (events.length > 0) {
+        eventsList.innerHTML = '';
+    }
+    
     // Remove any existing "View Events List" buttons
     document.querySelectorAll('.view-events-btn').forEach(btn => btn.remove());
     
     events.forEach(event => {
-        if (!document.getElementById(`event-${event.id}`)) {
-            const eventElement = document.createElement('div');
-            eventElement.id = `event-${event.id}`;
-            eventElement.className = 'list-group-item event-item';
-            eventElement.innerHTML = `
-                <h5 class="mb-1">${event.title || 'Untitled Event'}</h5>
-                <p class="mb-1">${event.start_time || 'No time specified'}</p>
-                <small>${event.venue_name || 'No venue specified'}</small>
-            `;
-            eventsList.appendChild(eventElement);
-            setTimeout(() => eventElement.classList.add('show'), 10);
-        }
+        const eventElement = document.createElement('div');
+        eventElement.id = `event-${event.id}`;
+        eventElement.className = 'list-group-item event-item';
+        eventElement.innerHTML = `
+            <h5 class="mb-1">${event.title || 'Untitled Event'}</h5>
+            <p class="mb-1">${event.start_time || 'No time specified'}</p>
+            <small>${event.venue_name || 'No venue specified'}</small>
+        `;
+        eventsList.appendChild(eventElement);
+        setTimeout(() => eventElement.classList.add('show'), 10);
     });
 }
 
