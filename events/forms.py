@@ -3,12 +3,23 @@ from .models import Event
 import pytz
 from django.conf import settings
 from django.utils import timezone
+from .utils.spotify import SpotifyAPI
 
 class EventForm(forms.ModelForm):
     timezone = forms.ChoiceField(
         choices=[(tz, tz) for tz in pytz.common_timezones],
         initial='America/New_York',
         help_text='Select the timezone for this event'
+    )
+    
+    spotify_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search for a song to feature...',
+            'data-spotify-search': 'true'
+        }),
+        help_text='Search for a song to feature on your event page'
     )
 
     class Meta:
@@ -26,7 +37,12 @@ class EventForm(forms.ModelForm):
             'end_time', 
             'url',
             'image_url',
-            'is_public'
+            'is_public',
+            'spotify_track_id',
+            'spotify_track_name',
+            'spotify_artist_name',
+            'spotify_preview_url',
+            'spotify_external_url'
         ]
         widgets = {
             'start_time': forms.DateTimeInput(
@@ -46,6 +62,12 @@ class EventForm(forms.ModelForm):
             'venue_state': forms.TextInput(attrs={'class': 'form-control'}),
             'venue_postal_code': forms.TextInput(attrs={'class': 'form-control'}),
             'venue_country': forms.TextInput(attrs={'class': 'form-control'}),
+            # Hidden fields for Spotify data
+            'spotify_track_id': forms.HiddenInput(),
+            'spotify_track_name': forms.HiddenInput(),
+            'spotify_artist_name': forms.HiddenInput(),
+            'spotify_preview_url': forms.HiddenInput(),
+            'spotify_external_url': forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):

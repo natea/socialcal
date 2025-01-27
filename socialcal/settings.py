@@ -194,3 +194,7 @@ CACHES = {
 DEBUG_TOOLBAR_CONFIG = {
     'IS_RUNNING_TESTS': True,  # Allow debug toolbar to work with tests
 }
+
+# Spotify API Configuration
+SPOTIFY_CLIENT_ID = get_env_variable('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = get_env_variable('SPOTIFY_CLIENT_SECRET')

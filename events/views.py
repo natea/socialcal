@@ -6,6 +6,7 @@ from .models import Event
 from .forms import EventForm
 from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
 from .scrapers.ical_scraper import ICalScraper
+from .utils.spotify import SpotifyAPI
 import io
 import logging
 import json
@@ -20,6 +21,7 @@ from django.core.cache import cache
 import pickle
 from threading import Lock
 from django.urls import reverse
+import re
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -142,6 +144,15 @@ def event_import_status(request, job_id):
     # Return the job status
     return JsonResponse(status)
 
+def run_async_in_thread(coroutine, *args, **kwargs):
+    """Helper function to run async code in a thread."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coroutine(*args, **kwargs))
+    finally:
+        loop.close()
+
 @login_required
 def event_import(request):
     return async_to_sync(_event_import)(request)
@@ -188,8 +199,11 @@ async def _event_import(request):
                         }
                     })
 
-                    # Start the scraping in a background thread
-                    thread = Thread(target=scrape_crawl4ai_events_async, args=(source_url, job_id, request.user))
+                    # Start the scraping in a background thread with proper async handling
+                    thread = Thread(
+                        target=run_async_in_thread,
+                        args=(scrape_crawl4ai_events_async, source_url, job_id, request.user)
+                    )
                     thread.start()
                     
                     return JsonResponse({
@@ -209,6 +223,9 @@ async def _event_import(request):
                         
                         for event_data in events:
                             try:
+                                # Add Spotify track if it's a music event
+                                event_data = await add_spotify_track_to_event(event_data)
+                                
                                 # Check for existing event
                                 existing = await filter_events(
                                     user=request.user,
@@ -276,6 +293,9 @@ async def _event_import(request):
                     
                     for event_data in events:
                         try:
+                            # Add Spotify track if it's a music event
+                            event_data = await add_spotify_track_to_event(event_data)
+                            
                             # Check for existing event
                             existing = await filter_events(
                                 user=request.user,
@@ -358,7 +378,75 @@ def event_export(request):
     response.write(cal.to_ical())
     return response
 
-def scrape_crawl4ai_events_async(source_url, job_id, user):
+def is_music_event(event_data):
+    """Check if an event is likely a music event based on its data."""
+    music_keywords = {
+        'concert', 'live music', 'band', 'performance', 'gig', 'show',
+        'musician', 'singer', 'performer', 'dj', 'jazz', 'rock', 'blues',
+        'hip hop', 'rap', 'electronic', 'classical', 'orchestra', 'ensemble',
+        'quartet', 'trio', 'recital', 'festival'
+    }
+    
+    # Check title and description for music-related keywords
+    text_to_check = f"{event_data.get('title', '')} {event_data.get('description', '')}".lower()
+    return any(keyword in text_to_check for keyword in music_keywords)
+
+def get_artist_from_event(event_data):
+    """Extract potential artist name from event data."""
+    title = event_data.get('title', '')
+    
+    # Common patterns in music event titles
+    patterns = [
+        r"(.+?)\s*(?:live at|at|@|presents|featuring|feat\.|ft\.|with)",  # Artist before venue/location
+        r"(?:presents|featuring|feat\.|ft\.|with)\s*(.+)",  # Artist after presenting words
+        r"(.+?)\s*(?:in concert|concert|performance|show|gig)"  # Artist before event type
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, title, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    
+    # If no patterns match, return the whole title
+    return title
+
+def add_spotify_track_to_event(event_data):
+    """Search for and add a Spotify track to the event data if it's a music event."""
+    # Initialize Spotify fields with empty values
+    spotify_defaults = {
+        'spotify_track_id': '',
+        'spotify_track_name': '',
+        'spotify_artist_name': '',
+        'spotify_preview_url': '',
+        'spotify_external_url': ''
+    }
+    event_data.update(spotify_defaults)
+    
+    if not is_music_event(event_data):
+        return event_data
+        
+    artist = get_artist_from_event(event_data)
+    if not artist:
+        return event_data
+        
+    try:
+        # Search for the artist's top track
+        track = SpotifyAPI.search_track(f"artist:{artist}")
+        if track:
+            event_data.update({
+                'spotify_track_id': track['id'],
+                'spotify_track_name': track['name'],
+                'spotify_artist_name': track['artist'],
+                'spotify_preview_url': track['preview_url'] or '',
+                'spotify_external_url': track['external_url']
+            })
+    except Exception as e:
+        logger.error(f"Error searching Spotify for artist {artist}: {str(e)}")
+        # Keep the default empty values on error
+    
+    return event_data
+
+async def scrape_crawl4ai_events_async(source_url, job_id, user):
     loop = None
     try:
         # Initialize status with progress tracking
@@ -383,24 +471,7 @@ def scrape_crawl4ai_events_async(source_url, job_id, user):
         })
 
         # Start scraping
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Update progress before scraping
-        set_job_status(job_id, {
-            'status': 'running',
-            'progress': {
-                'overall': 10,
-                'scraping': 20,
-                'processing': 0
-            },
-            'status_message': {
-                'scraping': 'Fetching events from webpage...',
-                'processing': 'Waiting to process events...'
-            }
-        })
-        
-        events = loop.run_until_complete(scrape_crawl4ai_events(source_url))
+        events = await scrape_crawl4ai_events(source_url)
         
         # Update progress after scraping
         set_job_status(job_id, {
@@ -431,7 +502,7 @@ def scrape_crawl4ai_events_async(source_url, job_id, user):
             try:
                 # Calculate progress
                 processing_progress = int((index / total_events) * 100)
-                overall_progress = 40 + int((index / total_events) * 60)  # 40-100% range
+                overall_progress = 40 + int((index / total_events) * 60)
                 
                 # Update progress during processing
                 set_job_status(job_id, {
@@ -450,22 +521,26 @@ def scrape_crawl4ai_events_async(source_url, job_id, user):
                         'created': created_count,
                         'updated': updated_count
                     },
-                    'events': processed_events  # Add the processed events array to show events as they are processed
+                    'events': processed_events
                 })
                 
+                # Add Spotify track if it's a music event
+                event_data = add_spotify_track_to_event(event_data)
+                
                 # Check for existing event
-                existing = Event.objects.filter(
+                existing = await filter_events(
                     user=user,
                     title=event_data.get('title'),
                     start_time=event_data.get('start_time')
-                ).first()
+                )
+                existing = existing[0] if existing else None
                 
                 if existing:
                     # Update existing event
                     for field, value in event_data.items():
                         if hasattr(existing, field):
                             setattr(existing, field, value)
-                    existing.save()
+                    await save_event(existing)
                     updated_count += 1
                 else:
                     # Create new event
@@ -473,7 +548,7 @@ def scrape_crawl4ai_events_async(source_url, job_id, user):
                     for field, value in event_data.items():
                         if hasattr(event, field):
                             setattr(event, field, value)
-                    event.save()
+                    await save_event(event)
                     created_count += 1
                 
                 processed_events.append(event_data)
@@ -525,3 +600,16 @@ def scrape_crawl4ai_events_async(source_url, job_id, user):
             loop.stop()
             loop.close()
             asyncio.set_event_loop(None)  # Clear the event loop
+
+@login_required
+def spotify_search(request):
+    """Handle AJAX requests for Spotify track search."""
+    query = request.GET.get('q')
+    if not query:
+        return JsonResponse({'error': 'No search query provided'}, status=400)
+        
+    track = SpotifyAPI.search_track(query)
+    if not track:
+        return JsonResponse({'error': 'No tracks found'}, status=404)
+        
+    return JsonResponse(track)

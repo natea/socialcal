@@ -24,6 +24,17 @@
             <div class="card-body">
                 <h5 class="card-title">{{ event.title }}</h5>
                 <h6 class="card-subtitle mb-2 text-muted">{{ event.start_time|date:"F j, Y g:i A" }}</h6>
+                {% if event.spotify_track_id %}
+                <div class="spotify-preview mb-3">
+                    <iframe src="https://open.spotify.com/embed/track/{{ event.spotify_track_id }}?compact=1"
+                            width="100%"
+                            height="80"
+                            frameborder="0"
+                            allowtransparency="true"
+                            allow="encrypted-media">
+                    </iframe>
+                </div>
+                {% endif %}
                 <p class="card-text">{{ event.description|truncatewords:30 }}</p>
                 {% if event.venue_name %}
                 <p class="card-text"><small class="text-muted">{{ event.venue_name }}</small></p>
@@ -48,6 +59,11 @@
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.spotify-preview {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>
 {% endblock %} 

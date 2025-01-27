@@ -45,4 +45,8 @@ DEFAULT_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL')
 # API Keys - Make them optional in development
 SIMPLESCRAPER_API_KEY = os.environ.get('SIMPLESCRAPER_API_KEY', '')
 FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '') 
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+
+# Spotify API Configuration
+SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET') 
