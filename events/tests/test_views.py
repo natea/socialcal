@@ -510,3 +510,57 @@ class TestEventViews:
         url = reverse('events:delete', args=[event.pk])
         response = authenticated_client.post(url)
         assert response.status_code == 404
+
+    @pytest.mark.django_db(transaction=True)
+    def test_export_ical(self, authenticated_client, user):
+        # Create test events
+        event1 = Event.objects.create(
+            user=user,
+            title="Test Event 1",
+            description="Test Description 1",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=2),
+            venue_name="Test Venue 1",
+            venue_address="123 Test St",
+            venue_city="Test City",
+            venue_state="TS",
+            venue_postal_code="12345",
+            is_public=True
+        )
+        
+        event2 = Event.objects.create(
+            user=user,
+            title="Test Event 2",
+            description="Test Description 2",
+            start_time=timezone.now() + timezone.timedelta(days=1),
+            end_time=timezone.now() + timezone.timedelta(days=1, hours=2),
+            venue_name="Test Venue 2",
+            venue_address="456 Test Ave",
+            venue_city="Test City",
+            venue_state="TS",
+            venue_postal_code="12345",
+            is_public=True
+        )
+        
+        # Test iCal export
+        url = reverse('events:export_ical')
+        response = authenticated_client.get(url)
+        
+        # Check response
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'text/calendar'
+        assert 'attachment; filename=events.ics' in response['Content-Disposition']
+        
+        # Check iCal content
+        ical_content = response.content.decode()
+        assert 'BEGIN:VCALENDAR' in ical_content
+        assert 'VERSION:2.0' in ical_content
+        assert 'PRODID:-//SocialCal//EN' in ical_content
+        assert 'BEGIN:VEVENT' in ical_content
+        assert 'SUMMARY:Test Event 1' in ical_content
+        assert 'SUMMARY:Test Event 2' in ical_content
+        assert 'DESCRIPTION:Test Description 1' in ical_content
+        assert 'DESCRIPTION:Test Description 2' in ical_content
+        
+        # Check location with escaped commas and line continuation
+        assert 'LOCATION:Test Venue 1\\, 123 Test St\\, Test City\\, TS\\, 12345\\, United States' in ical_content.replace('\r\n ', '')
