@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load events_tags %}
 
 {% block title %}Discover Local Events{% endblock %}
 
@@ -35,7 +36,7 @@
             <select name="venue" class="form-select" style="width: auto;" onchange="this.form.submit()">
                 <option value="">All Venues</option>
                 {% for venue in venues %}
-                    <option value="{{ venue }}" {% if venue == selected_venue %}selected{% endif %}>{{ venue }}</option>
+                    <option value="{{ venue }}" {% if venue == selected_venue %}selected{% endif %}>{{ venue_display_names|get_item:venue }}</option>
                 {% endfor %}
             </select>
             {% if search_query or selected_venue %}

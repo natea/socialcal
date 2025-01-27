@@ -100,9 +100,16 @@ def event_list(request):
     # Get distinct venues for the filter dropdown
     venues = Event.objects.filter(user=request.user).exclude(venue_name='').values_list('venue_name', flat=True).distinct().order_by('venue_name')
     
+    # Truncate long venue names for the dropdown (keep original for filtering)
+    venue_display_names = {
+        venue: (venue[:50] + '...' if len(venue) > 50 else venue)
+        for venue in venues
+    }
+    
     return render(request, 'events/list.html', {
         'events': events,
         'venues': venues,
+        'venue_display_names': venue_display_names,
         'selected_venue': venue_filter,
         'search_query': search_query
     })
