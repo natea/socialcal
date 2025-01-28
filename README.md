@@ -7,7 +7,7 @@ An experiment to build a generic events scraper and publish them to a curated an
 1. Create a virtual environment `python -m venv venv`
 2. Activate the virtual environment `source venv/bin/activate`
 3. Install dependencies `pip install -r requirements.txt`
-4. Create a .env file with the following variables (see .env-dummy for reference):
+4. Create a `.env file with the following variables (see .env-dummy for reference):
     - `OPENAI_API_KEY`
     - `SPOTIFY_CLIENT_ID`
     - `SPOTIFY_CLIENT_SECRET`

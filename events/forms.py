@@ -127,4 +127,9 @@ class EventForm(forms.ModelForm):
             end_time = tz.localize(end_time).astimezone(pytz.UTC)
             cleaned_data['end_time'] = end_time
 
+        # Validate that end_time is after start_time
+        if start_time and end_time and end_time <= start_time:
+            self.add_error('end_time', 'End time must be after start time')
+            self.add_error('start_time', 'Start time must be before end time')
+
         return cleaned_data 

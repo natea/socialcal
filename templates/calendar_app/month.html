@@ -10,7 +10,7 @@
     <div>
         <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}"
            class="btn btn-outline-secondary me-2"
-           onclick="this.href = this.href.replace('http', 'webcal');">
+           data-protocol="webcal">
             <i class="bi bi-calendar-event"></i> Add to Calendar
         </a>
         <a href="{% url 'calendar:month' year=prev_month.year month=prev_month.month %}" class="btn btn-outline-primary">&laquo; Previous</a>
