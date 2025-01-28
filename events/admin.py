@@ -1,5 +1,21 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from .models import Event
+
+class UserFilter(admin.SimpleListFilter):
+    title = 'User'
+    parameter_name = 'user'
+
+    def lookups(self, request, model_admin):
+        users = get_user_model().objects.filter(
+            id__in=Event.objects.values_list('user_id', flat=True)
+        ).order_by('username')
+        return [(user.id, user.username) for user in users]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(user_id=self.value())
+        return queryset
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
@@ -13,6 +29,7 @@ class EventAdmin(admin.ModelAdmin):
         'created_at'
     ]
     list_filter = [
+        UserFilter,
         'is_public',
         'venue_city',
         'venue_state',
