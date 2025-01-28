@@ -8,6 +8,11 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>{{ current_date|date:"F Y" }}</h2>
     <div>
+        <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}"
+           class="btn btn-outline-secondary me-2"
+           onclick="this.href = this.href.replace('http', 'webcal');">
+            <i class="bi bi-calendar-event"></i> Add to Calendar
+        </a>
         <a href="{% url 'calendar:month' year=prev_month.year month=prev_month.month %}" class="btn btn-outline-primary">&laquo; Previous</a>
         <a href="{% url 'calendar:month' year=next_month.year month=next_month.month %}" class="btn btn-outline-primary">Next &raquo;</a>
     </div>

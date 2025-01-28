@@ -23,6 +23,7 @@ from threading import Lock
 from django.urls import reverse
 import re
 from django.db import models
+from django.utils import timezone
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -699,3 +700,43 @@ def spotify_search(request):
         return JsonResponse({'error': 'No tracks found'}, status=404)
         
     return JsonResponse(tracks, safe=False)
+
+def export_ical(request, events=None):
+    """Export events as iCalendar feed."""
+    # Create calendar
+    cal = Calendar()
+    cal.add('prodid', '-//SocialCal//EN')
+    cal.add('version', '2.0')
+    cal.add('calscale', 'GREGORIAN')
+    
+    # If event_id is provided, export only that event
+    event_id = request.GET.get('event_id')
+    if event_id:
+        try:
+            events = [Event.objects.get(id=event_id, is_public=True)]
+        except Event.DoesNotExist:
+            events = []
+    # If no events provided and no event_id, get all public events
+    elif events is None:
+        events = Event.objects.filter(is_public=True)
+    
+    # Add events to calendar
+    for event in events:
+        cal_event = ICalEvent()
+        cal_event.add('summary', event.title)
+        cal_event.add('description', event.description)
+        cal_event.add('dtstart', event.start_time)
+        if event.end_time:
+            cal_event.add('dtend', event.end_time)
+        if event.location:
+            cal_event.add('location', event.location)
+        cal_event.add('url', request.build_absolute_uri(event.get_absolute_url()))
+        cal_event.add('dtstamp', timezone.now())
+        cal_event.add('uid', f'{event.id}@socialcal')
+        cal.add_component(cal_event)
+    
+    # Return calendar as response
+    response = HttpResponse(cal.to_ical(), content_type='text/calendar')
+    filename = f"event_{event_id}.ics" if event_id else "events.ics"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    return response

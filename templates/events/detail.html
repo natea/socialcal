@@ -39,13 +39,18 @@
                     </div>
                     
                     <!-- Links -->
-                    {% if event.url %}
-                        <div class="mb-4">
+                    <div class="mb-4">
+                        <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}?event_id={{ event.id }}"
+                           class="btn btn-outline-secondary me-2"
+                           onclick="this.href = this.href.replace('http', 'webcal');">
+                            <i class="bi bi-calendar-event"></i> Add to Calendar
+                        </a>
+                        {% if event.url %}
                             <a href="{{ event.url }}" target="_blank" class="btn btn-primary">
                                 Visit Event Website
                             </a>
-                        </div>
-                    {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
