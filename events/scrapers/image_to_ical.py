@@ -70,8 +70,8 @@ SUMMARY:World Music & Dance Day
 DESCRIPTION:Occidental Center for the Arts Presents the Second Annual World Music & Dance Day.\nWatch • Play • Learn • Enjoy\n
 END:VEVENT
 END:VCALENDAR
-Assume the timezone is America/Los_Angeles.
-Assume 2024 year if the year is not present in the image.
+Assume the timezone is America/New_York.
+Assume 2025 year if the year is not present in the image.
 Be sure to provide a complete iCalendar event, from BEGIN:VCALENDAR to END:VCALENDAR.
 """
         }
@@ -85,7 +85,7 @@ def main(image_path):
     messages = create_messages(schema, encoded_image)
     
     # Send request to OpenAI API
-    response = client.chat.completions.create(model="gpt-4o",
+    response = client.chat.completions.create(model="gpt-4o-mini",
     messages=messages,
     max_tokens=4096)
     
