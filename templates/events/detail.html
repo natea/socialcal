@@ -42,7 +42,7 @@
                     <div class="mb-4">
                         <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}?event_id={{ event.id }}"
                            class="btn btn-outline-secondary me-2"
-                           onclick="this.href = this.href.replace('http', 'webcal');">
+                           data-protocol="webcal">
                             <i class="bi bi-calendar-event"></i> Add to Calendar
                         </a>
                         {% if event.url %}
