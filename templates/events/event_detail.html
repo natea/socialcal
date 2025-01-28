@@ -1,0 +1,8 @@
+<div class="event-actions mt-3">
+    {% if user.is_authenticated %}
+        <a href="{% url 'events:edit' event.id %}" class="btn btn-primary">Edit Event</a>
+        <a href="{% url 'events:delete' event.id %}" class="btn btn-danger">Delete Event</a>
+    {% endif %}
+    <a href="{% url 'events:export_ical' %}?event_id={{ event.id }}" class="btn btn-secondary" data-protocol="webcal">Subscribe to Calendar</a>
+    <a href="{% url 'events:export_ical' %}?event_id={{ event.id }}" class="btn btn-outline-secondary">Download iCal</a>
+</div> 

@@ -34,7 +34,7 @@ class TestWebcalLinks:
         soup = BeautifulSoup(response.content, 'html.parser')
         webcal_link = soup.find('a', attrs={'data-protocol': 'webcal'})
         assert webcal_link is not None
-        assert 'Add to Calendar' in webcal_link.text
+        assert 'Subscribe to All Events' in webcal_link.text
 
         # Test calendar month view
         month_url = reverse('calendar:month', kwargs={

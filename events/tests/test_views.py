@@ -564,3 +564,107 @@ class TestEventViews:
         
         # Check location with escaped commas and line continuation
         assert 'LOCATION:Test Venue 1\\, 123 Test St\\, Test City\\, TS\\, 12345\\, United States' in ical_content.replace('\r\n ', '')
+
+    @pytest.mark.django_db(transaction=True)
+    def test_event_detail_calendar_links(self, authenticated_client, user):
+        # Create a test event
+        event = Event.objects.create(
+            user=user,
+            title="Test Event",
+            description="Test Description",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=2),
+            is_public=True
+        )
+        
+        # Get the event detail page
+        response = authenticated_client.get(reverse('events:detail', args=[event.id]))
+        assert response.status_code == 200
+        
+        # Check for webcal subscription link
+        assert f'href="{reverse("events:export_ical")}?event_id={event.id}"' in response.content.decode()
+        assert 'data-protocol="webcal"' in response.content.decode()
+        assert 'Subscribe to Calendar' in response.content.decode()
+        
+        # Check for iCal download link
+        assert f'href="{reverse("events:export_ical")}?event_id={event.id}"' in response.content.decode()
+        assert 'Download iCal' in response.content.decode()
+
+    @pytest.mark.django_db(transaction=True)
+    def test_event_list_calendar_links(self, authenticated_client, user):
+        # Create some test events
+        Event.objects.create(
+            user=user,
+            title="Test Event 1",
+            description="Test Description 1",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=2),
+            is_public=True
+        )
+        Event.objects.create(
+            user=user,
+            title="Test Event 2",
+            description="Test Description 2",
+            start_time=timezone.now() + timezone.timedelta(days=1),
+            end_time=timezone.now() + timezone.timedelta(days=1, hours=2),
+            is_public=True
+        )
+        
+        # Get the event list page
+        response = authenticated_client.get(reverse('events:list'))
+        assert response.status_code == 200
+        
+        # Check for webcal subscription link for all events
+        assert f'href="{reverse("events:export_ical")}"' in response.content.decode()
+        assert 'data-protocol="webcal"' in response.content.decode()
+        assert 'Subscribe to All Events' in response.content.decode()
+        
+        # Check for iCal download link for all events
+        assert f'href="{reverse("events:export_ical")}"' in response.content.decode()
+        assert 'Download All Events' in response.content.decode()
+
+    @pytest.mark.django_db(transaction=True)
+    def test_export_ical_webcal_header(self, authenticated_client, user):
+        # Create a test event
+        event = Event.objects.create(
+            user=user,
+            title="Test Event",
+            description="Test Description",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=2),
+            is_public=True
+        )
+        
+        # Test single event export
+        response = authenticated_client.get(f'{reverse("events:export_ical")}?event_id={event.id}')
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'text/calendar'
+        assert 'X-Webcal-URL' in response
+        assert response['X-Webcal-URL'].startswith('webcal://')
+        
+        # Test all events export
+        response = authenticated_client.get(reverse('events:export_ical'))
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'text/calendar'
+        assert 'X-Webcal-URL' in response
+        assert response['X-Webcal-URL'].startswith('webcal://')
+
+    @pytest.mark.django_db(transaction=True)
+    def test_webcal_javascript_functionality(self, authenticated_client, user):
+        # Create a test event
+        event = Event.objects.create(
+            user=user,
+            title="Test Event",
+            description="Test Description",
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=2),
+            is_public=True
+        )
+        
+        # Get the event detail page
+        response = authenticated_client.get(reverse('events:detail', args=[event.id]))
+        content = response.content.decode()
+        
+        # Check that the JavaScript for handling webcal links is included
+        assert 'document.querySelectorAll(\'a[data-protocol="webcal"]\')' in content
+        assert 'link.href = link.href.replace(/^https?:\/\//, \'webcal://\');' in content

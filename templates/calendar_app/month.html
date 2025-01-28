@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>{{ current_date|date:"F Y" }}</h2>
     <div>
-        <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}"
+        <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}{% if user.is_authenticated %}?user_id={{ user.id }}{% endif %}"
            class="btn btn-outline-secondary me-2"
            data-protocol="webcal">
             <i class="bi bi-calendar-event"></i> Add to Calendar

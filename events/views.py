@@ -708,35 +708,93 @@ def export_ical(request, events=None):
     cal.add('prodid', '-//SocialCal//EN')
     cal.add('version', '2.0')
     cal.add('calscale', 'GREGORIAN')
+    cal.add('method', 'PUBLISH')  # Add method for better compatibility
+    
+    # Add timezone information
+    tz = timezone.get_current_timezone()
+    cal.add('x-wr-timezone', str(tz))
+    
+    # Get user_id from request parameters
+    user_id = request.GET.get('user_id')
     
     # If event_id is provided, export only that event
     event_id = request.GET.get('event_id')
     if event_id:
         try:
-            events = [Event.objects.get(id=event_id, is_public=True)]
+            if user_id:
+                # Try to get the event for the specified user
+                events = [Event.objects.get(id=event_id, user_id=user_id)]
+            else:
+                # Fall back to public events only
+                events = [Event.objects.get(id=event_id, is_public=True)]
         except Event.DoesNotExist:
             events = []
-    # If no events provided and no event_id, get all public events
+    # If no events provided and no event_id, get filtered events
     elif events is None:
-        events = Event.objects.filter(is_public=True)
+        if user_id:
+            # Get all events for the specified user
+            events = Event.objects.filter(user_id=user_id)
+        else:
+            # Fall back to public events only
+            events = Event.objects.filter(is_public=True)
     
     # Add events to calendar
     for event in events:
         cal_event = ICalEvent()
         cal_event.add('summary', event.title)
         cal_event.add('description', event.description)
+        
+        # Add start time (required)
         cal_event.add('dtstart', event.start_time)
+        
+        # Add end time (if not set, default to 1 hour after start)
         if event.end_time:
             cal_event.add('dtend', event.end_time)
-        if event.location:
-            cal_event.add('location', event.location)
+        else:
+            cal_event.add('dtend', event.start_time + timezone.timedelta(hours=1))
+        
+        # Add location if available
+        location_parts = []
+        if event.venue_name:
+            location_parts.append(event.venue_name)
+        if event.venue_address:
+            location_parts.append(event.venue_address)
+        if event.venue_city:
+            location_parts.append(event.venue_city)
+        if event.venue_state:
+            location_parts.append(event.venue_state)
+        if event.venue_postal_code:
+            location_parts.append(event.venue_postal_code)
+        if location_parts:
+            location_parts.append('United States')  # Add country
+            location = ', '.join(location_parts)
+            cal_event.add('location', location)
+        
+        # Add URL to event detail page
         cal_event.add('url', request.build_absolute_uri(event.get_absolute_url()))
+        
+        # Add creation timestamp
         cal_event.add('dtstamp', timezone.now())
-        cal_event.add('uid', f'{event.id}@socialcal')
+        
+        # Add unique identifier
+        cal_event.add('uid', f'{event.id}@{request.get_host()}')
+        
+        # Add status
+        cal_event.add('status', 'CONFIRMED')
+        
         cal.add_component(cal_event)
     
     # Return calendar as response
     response = HttpResponse(cal.to_ical(), content_type='text/calendar')
     filename = f"event_{event_id}.ics" if event_id else "events.ics"
     response['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    # Add webcal URL to response headers
+    webcal_url = request.build_absolute_uri()
+    if request.user.is_authenticated and 'user_id' not in webcal_url:
+        separator = '&' if '?' in webcal_url else '?'
+        webcal_url = f"{webcal_url}{separator}user_id={request.user.id}"
+    webcal_url = webcal_url.replace('http://', 'webcal://').replace('https://', 'webcal://')
+    response['X-Webcal-URL'] = webcal_url
+    
     return response

@@ -1,0 +1,7 @@
+<div class="event-actions mb-4">
+    {% if user.is_authenticated %}
+        <a href="{% url 'events:create' %}" class="btn btn-primary">Create Event</a>
+    {% endif %}
+    <a href="{% url 'events:export_ical' %}" class="btn btn-secondary" data-protocol="webcal">Subscribe to All Events</a>
+    <a href="{% url 'events:export_ical' %}" class="btn btn-outline-secondary">Download All Events</a>
+</div> 
