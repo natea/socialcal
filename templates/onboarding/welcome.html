@@ -59,6 +59,42 @@
 body {
     background-color: #F8F0FF;
 }
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background-color: #4285f4;
+    border-color: #4285f4;
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #3367d6;
+    border-color: #3367d6;
+    transform: translateY(-1px);
+}
+
+.btn-link {
+    color: #666;
+}
+
+.btn-link:hover {
+    color: #333;
+}
+
+a {
+    color: #4285f4;
+}
+
+a:hover {
+    color: #3367d6;
+}
 </style>
 {% endblock %}
 
@@ -70,7 +106,7 @@ body {
     <h1 class="onboarding-title">Welcome to SoCal!</h1>
     <p class="onboarding-text">Let's get your social calendar set up in just a few fun steps!</p>
     
-    <a href="{% provider_login_url 'google' process='login' next='/onboarding/event-types/' %}" class="google-button">
+    <a href="{% provider_login_url 'google' process='oauth' scope='openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' next='/onboarding/event-types/' %}" class="google-button">
         <img src="{% static 'images/google-icon.png' %}" alt="Google" class="google-icon" width="20">
         Continue with Google
     </a>

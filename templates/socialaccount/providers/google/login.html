@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0 rounded-lg mt-5">
+                <div class="card-body p-4 p-sm-5">
+                    <div class="text-center mb-4">
+                        <img src="{% static 'images/logo.svg' %}" alt="SocialCal Logo" class="mb-4" style="max-width: 200px;">
+                        <h2 class="fs-4 fw-bold">{% trans "Sign In with Google" %}</h2>
+                        <p class="text-muted">{% trans "You're about to sign in using your Google account" %}</p>
+                    </div>
+
+                    <div class="d-grid gap-3">
+                        <a href="{{ provider_login_url }}" class="btn btn-primary btn-lg d-flex align-items-center justify-content-center gap-2">
+                            <img src="{% static 'images/google-icon.svg' %}" alt="Google" width="24" height="24">
+                            {% trans "Continue with Google" %}
+                        </a>
+                        
+                        <a href="{% url 'onboarding:welcome' %}" class="btn btn-link text-decoration-none">
+                            {% trans "Cancel" %}
+                        </a>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <small class="text-muted">
+                            {% trans "By continuing, you agree to our" %}
+                            <a href="#" class="text-decoration-none">{% trans "Terms of Service" %}</a> {% trans "and" %}
+                            <a href="#" class="text-decoration-none">{% trans "Privacy Policy" %}</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

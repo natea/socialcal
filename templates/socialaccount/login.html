@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0 rounded-lg mt-5">
+                <div class="card-body p-4 p-sm-5">
+                    <div class="text-center mb-4">
+                        <img src="{% static 'images/logo.png' %}" alt="SocialCal Logo" class="mb-4" style="max-width: 200px;">
+                        <h2 class="fs-4 fw-bold">Sign In to SocialCal</h2>
+                        <p class="text-muted">You're about to sign in using your Google account</p>
+                    </div>
+
+                    <div class="d-grid gap-3">
+                        <a href="{{ process_url }}" class="btn btn-primary btn-lg d-flex align-items-center justify-content-center gap-2">
+                            <img src="{% static 'images/google-icon.png' %}" alt="Google" width="24" height="24">
+                            Continue with Google
+                        </a>
+                        
+                        <a href="{% url 'onboarding:welcome' %}" class="btn btn-link text-decoration-none">
+                            Cancel
+                        </a>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <small class="text-muted">
+                            By continuing, you agree to our 
+                            <a href="#" class="text-decoration-none">Terms of Service</a> and 
+                            <a href="#" class="text-decoration-none">Privacy Policy</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background-color: #4285f4;
+    border-color: #4285f4;
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #3367d6;
+    border-color: #3367d6;
+    transform: translateY(-1px);
+}
+
+.btn-link {
+    color: #666;
+}
+
+.btn-link:hover {
+    color: #333;
+}
+
+a {
+    color: #4285f4;
+}
+
+a:hover {
+    color: #3367d6;
+}
+</style>
+{% endblock %}
