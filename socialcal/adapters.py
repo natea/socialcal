@@ -1,4 +1,5 @@
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from allauth.account.adapter import DefaultAccountAdapter
 from django.conf import settings
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
@@ -21,4 +22,18 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         """
         user = super().populate_user(request, sociallogin, data)
         user.email = data.get('email', '')
+        return user
+
+    def is_email_verified(self, request, email):
+        """
+        Skip email verification for social accounts.
+        """
+        return True
+
+    def save_user(self, request, sociallogin, form=None):
+        """
+        Save the user and mark their email as verified.
+        """
+        user = super().save_user(request, sociallogin, form)
+        user.emailaddress_set.update(verified=True)
         return user

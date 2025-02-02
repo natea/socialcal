@@ -152,52 +152,33 @@ else:
     DEFAULT_FROM_EMAIL = get_env_variable('RESEND_FROM_EMAIL')
 
 # django-allauth settings
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_VERIFICATION = 'none'
-ACCOUNT_CONFIRM_EMAIL_ON_GET = True
-ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_CONFIRM_EMAIL_ON_GET = False
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = False
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_LOGOUT_REDIRECT_URL = 'onboarding:welcome'
 ACCOUNT_LOGIN_ATTEMPTS_LIMIT = None
+ACCOUNT_MAX_EMAIL_ADDRESSES = 1
 
 # Provider specific settings
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_STORE_TOKENS = True
-SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_EMAIL_VERIFICATION = False
 SOCIALACCOUNT_EMAIL_REQUIRED = False
 SOCIALACCOUNT_ADAPTER = 'socialcal.adapters.CustomSocialAccountAdapter'
 
-# Authentication Settings
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
-
-# Social Account Settings
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'APP': {
-            'client_id': get_env_variable('GOOGLE_CLIENT_ID'),
-            'secret': get_env_variable('GOOGLE_CLIENT_SECRET'),
-            'key': ''
-        },
-        'SCOPE': [
-            'openid',
-            'profile',
-            'email',
-            'https://www.googleapis.com/auth/calendar.readonly',
-            'https://www.googleapis.com/auth/calendar.events'
-        ],
-        'AUTH_PARAMS': {
-            'access_type': 'offline',
-            'prompt': 'consent'
-        }
-    }
-}
+# Disable email verification completely
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+ACCOUNT_EMAIL_CONFIRMATION_HMAC = False
+ACCOUNT_EMAIL_CONFIRMATION_COOLDOWN = 0
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 0
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 
 # API Keys
 SIMPLESCRAPER_API_KEY = get_env_variable('SIMPLESCRAPER_API_KEY')
@@ -220,4 +201,26 @@ CACHES = {
 # Debug Toolbar Configuration
 DEBUG_TOOLBAR_CONFIG = {
     'IS_RUNNING_TESTS': True,  # Allow debug toolbar to work with tests
+}
+
+# Social Account Settings
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': get_env_variable('GOOGLE_CLIENT_ID'),
+            'secret': get_env_variable('GOOGLE_CLIENT_SECRET'),
+            'key': ''
+        },
+        'SCOPE': [
+            'openid',
+            'profile',
+            'email',
+            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/calendar.events'
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'offline',
+            'prompt': 'consent'
+        }
+    }
 }
