@@ -133,12 +133,14 @@ ACCOUNT_USERNAME_REQUIRED = False
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [
-            'profile',
-            'email',
-            'https://www.googleapis.com/auth/calendar'
+            'https://www.googleapis.com/auth/userinfo.profile',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/calendar.events'
         ],
         'AUTH_PARAMS': {
-            'access_type': 'online',
+            'access_type': 'offline',
+            'prompt': 'consent'
         }
     }
 }
