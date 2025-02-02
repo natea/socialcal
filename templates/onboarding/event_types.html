@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+.onboarding-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.onboarding-icon {
+    color: #8A2BE2;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.onboarding-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.onboarding-text {
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.event-types {
+    text-align: left;
+    margin-bottom: 2rem;
+}
+
+.event-type-checkbox {
+    margin-bottom: 1rem;
+}
+
+.event-type-checkbox input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.onboarding-button {
+    background: #8A2BE2;
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 5px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+.onboarding-button:hover {
+    background: #7B1FA2;
+    color: white;
+}
+
+body {
+    background-color: #F8F0FF;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="onboarding-icon">
+        <i class="bi bi-star"></i>
+    </div>
+    <h1 class="onboarding-title">Choose Event Types</h1>
+    <p class="onboarding-text">Select the types of events you're interested in!</p>
+    
+    <form method="post" action="{% url 'onboarding:event_types' %}">
+        {% csrf_token %}
+        <div class="event-types">
+            <div class="event-type-checkbox">
+                <input type="checkbox" id="music" name="event_types" value="music">
+                <label for="music">Music Concerts</label>
+            </div>
+            <div class="event-type-checkbox">
+                <input type="checkbox" id="sports" name="event_types" value="sports">
+                <label for="sports">Sports Events</label>
+            </div>
+            <div class="event-type-checkbox">
+                <input type="checkbox" id="food" name="event_types" value="food">
+                <label for="food">Food Festivals</label>
+            </div>
+            <div class="event-type-checkbox">
+                <input type="checkbox" id="tech" name="event_types" value="tech">
+                <label for="tech">Tech Conferences</label>
+            </div>
+            <div class="event-type-checkbox">
+                <input type="checkbox" id="art" name="event_types" value="art">
+                <label for="art">Art Exhibitions</label>
+            </div>
+        </div>
+        <button type="submit" class="onboarding-button">
+            Next <i class="bi bi-arrow-right"></i>
+        </button>
+    </form>
+</div>
+{% endblock %}

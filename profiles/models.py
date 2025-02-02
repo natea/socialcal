@@ -4,6 +4,14 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 class Profile(models.Model):
+    EVENT_TYPE_CHOICES = [
+        ('music', 'Music Concerts'),
+        ('sports', 'Sports Events'),
+        ('food', 'Food Festivals'),
+        ('tech', 'Tech Conferences'),
+        ('art', 'Art Exhibitions'),
+    ]
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE
@@ -19,6 +27,11 @@ class Profile(models.Model):
         verbose_name="Make calendar public",
         help_text="If checked, other users can see your events. If unchecked, your events are private."
     )
+    
+    # Onboarding fields
+    has_completed_onboarding = models.BooleanField(default=False)
+    event_preferences = models.JSONField(default=list, blank=True)
+    google_calendar_connected = models.BooleanField(default=False)
     
     def __str__(self):
         full_name = f"{self.first_name} {self.last_name}".strip()
@@ -42,4 +55,4 @@ def save_user_profile(sender, instance, **kwargs):
             Profile.objects.create(user=instance)
         instance.profile.save()
     except Profile.DoesNotExist:
-        Profile.objects.create(user=instance) 
+        Profile.objects.create(user=instance)
