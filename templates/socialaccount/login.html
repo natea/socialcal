@@ -13,16 +13,19 @@
                         <p class="text-muted">You're about to sign in using your Google account</p>
                     </div>
 
-                    <div class="d-grid gap-3">
-                        <a href="{{ process_url }}" class="btn btn-primary btn-lg d-flex align-items-center justify-content-center gap-2">
-                            <img src="{% static 'images/google-icon.png' %}" alt="Google" width="24" height="24">
-                            Continue with Google
-                        </a>
-                        
-                        <a href="{% url 'onboarding:welcome' %}" class="btn btn-link text-decoration-none">
-                            Cancel
-                        </a>
-                    </div>
+                    <form method="post" action="{{ action }}">
+                        {% csrf_token %}
+                        <div class="d-grid gap-3">
+                            <button type="submit" class="btn btn-primary btn-lg d-flex align-items-center justify-content-center gap-2">
+                                <img src="{% static 'images/google-icon.png' %}" alt="Google" width="24" height="24">
+                                Continue with Google
+                            </button>
+                            
+                            <a href="{% url 'onboarding:welcome' %}" class="btn btn-link text-decoration-none">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
 
                     <div class="mt-4 text-center">
                         <small class="text-muted">

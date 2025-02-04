@@ -21,14 +21,24 @@ def welcome(request):
 @login_required
 def event_types(request):
     # If user doesn't have a Google account connected, redirect to welcome
-    if not SocialAccount.objects.filter(user=request.user, provider='google').exists():
+    google_account = SocialAccount.objects.filter(
+        user=request.user,
+        provider='google'
+    ).first()
+    
+    if not google_account:
         return redirect('onboarding:welcome')
 
     if request.method == 'POST':
         selected_types = request.POST.getlist('event_types')
         request.user.profile.event_preferences = selected_types
         request.user.profile.save()
+        
+        # If we have calendar access, skip the calendar sync step
+        if request.user.profile.has_google_calendar_access:
+            return redirect('onboarding:social_connect')
         return redirect('onboarding:calendar_sync')
+        
     return render(request, 'onboarding/event_types.html')
 
 @login_required
@@ -47,7 +57,7 @@ def calendar_sync(request):
 
 @login_required
 def social_connect(request):
-    social_apps = SocialApp.objects.all()
+    social_apps = [app.provider for app in SocialApp.objects.all()]
     context = {
         'social_apps': social_apps,
     }

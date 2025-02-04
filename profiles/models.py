@@ -2,6 +2,9 @@ from django.db import models
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Profile(models.Model):
     EVENT_TYPE_CHOICES = [
@@ -12,10 +15,7 @@ class Profile(models.Model):
         ('art', 'Art Exhibitions'),
     ]
 
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
-    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
     bio = models.TextField(max_length=500, blank=True)
@@ -32,6 +32,7 @@ class Profile(models.Model):
     has_completed_onboarding = models.BooleanField(default=False)
     event_preferences = models.JSONField(default=list, blank=True)
     google_calendar_connected = models.BooleanField(default=False)
+    has_google_calendar_access = models.BooleanField(default=False)
     
     def __str__(self):
         full_name = f"{self.first_name} {self.last_name}".strip()

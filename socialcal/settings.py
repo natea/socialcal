@@ -206,11 +206,6 @@ DEBUG_TOOLBAR_CONFIG = {
 # Social Account Settings
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
-        'APP': {
-            'client_id': get_env_variable('GOOGLE_CLIENT_ID'),
-            'secret': get_env_variable('GOOGLE_CLIENT_SECRET'),
-            'key': ''
-        },
         'SCOPE': [
             'openid',
             'profile',
@@ -220,7 +215,9 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'offline',
-            'prompt': 'consent'
-        }
+            'prompt': 'consent',
+        },
+        'OAUTH_PKCE_ENABLED': True,
+        'VERIFIED_EMAIL': True
     }
 }
