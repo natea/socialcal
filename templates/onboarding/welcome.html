@@ -107,7 +107,7 @@ a:hover {
     <p class="onboarding-text">Sync your Google Calendar to never miss an event!</p>
     
     <a href="{% provider_login_url 'google' process='oauth' scope='openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' next='/onboarding/event-types/' %}" class="google-button">
-        <img src="{% static 'images/google-icon.png' %}" alt="Google" class="google-icon" width="20">
+        <img src="{% static 'images/google-icon.svg' %}" alt="Google" class="google-icon" width="20">
         Continue with Google
     </a>
 </div>
