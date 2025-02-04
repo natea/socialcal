@@ -847,17 +847,18 @@ class WeekView(TemplateView):
         })
         return context
 
+@login_required
 def get_day_events(request, date):
     """API endpoint to get events for a specific day"""
     try:
         date_obj = datetime.strptime(date, '%Y-%m-%d')
         date_obj = timezone.make_aware(date_obj)
         
-        # Filter events for the current user
+        # Filter events for the current user and order by start_time and id
         events = Event.objects.filter(
             user=request.user,
             start_time__date=date_obj.date()
-        ).order_by('start_time')
+        ).order_by('start_time', 'id')  # Add stable ordering by id
         
         events_data = [{
             'id': event.id,
