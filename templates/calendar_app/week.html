@@ -1,77 +1,68 @@
-{% extends "base.html" %}
+{% extends "calendar_app/calendar_base.html" %}
 {% load tz %}
 
-{% block title %}Calendar - Week of {{ week_start|date:"F j, Y" }}{% endblock %}
+{% block navigation_buttons %}
+<button class="btn btn-outline-primary" id="prevWeek">
+    <i class="bi bi-chevron-left"></i> Previous
+</button>
+<button class="btn btn-outline-primary mx-2" id="todayBtn">Today</button>
+<button class="btn btn-outline-primary" id="nextWeek">
+    Next <i class="bi bi-chevron-right"></i>
+</button>
+{% endblock %}
 
-{% block content %}
-{% timezone timezone %}
-<div class="container">
-    <!-- Calendar Header -->
-    <div class="calendar-header mb-4">
-        <h2>{{ month_year }}</h2>
-        <div class="d-flex justify-content-between align-items-center">
-            <button class="btn btn-link" id="prevWeek">
-                <i class="bi bi-chevron-left"></i>
-            </button>
-            <button class="btn btn-outline-primary" id="todayBtn">Today</button>
-            <button class="btn btn-link" id="nextWeek">
-                <i class="bi bi-chevron-right"></i>
-            </button>
+{% block calendar_content %}
+<!-- Week View -->
+<div class="week-view mb-4">
+    <div class="d-flex justify-content-between">
+        {% for date in week_dates %}
+        <div class="day-column text-center" 
+             data-date="{{ date.date|date:'Y-m-d' }}"
+             style="flex: 1; cursor: pointer;">
+            <div class="day-name">{{ date.date|date:"D" }}</div>
+            <div class="day-number {% if date.today %}today{% endif %} {% if date.date|date:'Y-m-d' == selected_date|date:'Y-m-d' %}selected{% endif %} rounded-circle d-inline-block"
+                 style="width: 40px; height: 40px; line-height: 36px;">
+                {{ date.date|date:"j" }}
+            </div>
         </div>
+        {% endfor %}
     </div>
+</div>
 
-    <!-- Week View -->
-    <div class="week-view mb-4">
-        <div class="d-flex justify-content-between">
-            {% for date in week_dates %}
-            <div class="day-column text-center" 
-                 data-date="{{ date.date|date:'Y-m-d' }}"
-                 style="flex: 1; cursor: pointer;">
-                <div class="day-name">{{ date.date|date:"D" }}</div>
-                <div class="day-number {% if date.today %}today{% endif %} {% if date.date|date:'Y-m-d' == selected_date|date:'Y-m-d' %}selected{% endif %} rounded-circle d-inline-block"
-                     style="width: 40px; height: 40px; line-height: 36px;">
-                    {{ date.date|date:"j" }}
+<!-- Day Detail View -->
+<div class="day-detail mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 id="selectedDate">{{ selected_date|date:"l, F j, Y" }}</h3>
+        <button class="btn btn-primary" id="addEvent">
+            <i class="bi bi-plus"></i> Add Event
+        </button>
+    </div>
+    
+    <div id="dayEvents">
+        {% if events %}
+            {% for event in events %}
+            <div class="event-card p-3 mb-2 bg-light rounded">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="mb-1">{{ event.title }}</h5>
+                        <p class="mb-1 text-muted">
+                            {{ event.start_time|date:"g:i A" }} - {{ event.end_time|date:"g:i A" }}
+                        </p>
+                        {% if event.location %}
+                        <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ event.location }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="event-actions">
+                        <a href="{% url 'events:detail' pk=event.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-info-circle"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
             {% endfor %}
-        </div>
-    </div>
-
-    <!-- Day Detail View -->
-    <div class="day-detail mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 id="selectedDate">{{ selected_date|date:"l, F j, Y" }}</h3>
-            <button class="btn btn-primary" id="addEvent">
-                <i class="bi bi-plus"></i> Add Event
-            </button>
-        </div>
-        
-        <div id="dayEvents">
-            {% if events %}
-                {% for event in events %}
-                <div class="event-card p-3 mb-2 bg-light rounded">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h5 class="mb-1">{{ event.title }}</h5>
-                            <p class="mb-1 text-muted">
-                                {{ event.start_time|date:"g:i A" }} - {{ event.end_time|date:"g:i A" }}
-                            </p>
-                            {% if event.location %}
-                            <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ event.location }}</p>
-                            {% endif %}
-                        </div>
-                        <div class="event-actions">
-                            <a href="{% url 'events:detail' pk=event.pk %}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-info-circle"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-center text-muted">No events for this day. Time to plan something fun!</p>
-            {% endif %}
-        </div>
+        {% else %}
+            <p class="text-center text-muted">No events for this day. Time to plan something fun!</p>
+        {% endif %}
     </div>
 </div>
 
@@ -179,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const year = firstDate.getFullYear();
         const month = firstDate.getMonth() + 1;  // JavaScript months are 0-based
         const day = firstDate.getDate();
-        window.location.href = `/events/week/${year}/${month}/${day}/`;
+        window.location.href = `/calendar/week/${year}/${month}/${day}/`;
     });
 
     document.getElementById('nextWeek').addEventListener('click', function() {
@@ -188,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const year = firstDate.getFullYear();
         const month = firstDate.getMonth() + 1;  // JavaScript months are 0-based
         const day = firstDate.getDate();
-        window.location.href = `/events/week/${year}/${month}/${day}/`;
+        window.location.href = `/calendar/week/${year}/${month}/${day}/`;
     });
 
     document.getElementById('todayBtn').addEventListener('click', function() {
@@ -196,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const year = today.getFullYear();
         const month = today.getMonth() + 1;  // JavaScript months are 0-based
         const day = today.getDate();
-        window.location.href = `/events/week/${year}/${month}/${day}/`;
+        window.location.href = `/calendar/week/${year}/${month}/${day}/`;
     });
 
     // Add click handler for Add Event button
@@ -205,5 +196,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% endtimezone %}
 {% endblock %} 

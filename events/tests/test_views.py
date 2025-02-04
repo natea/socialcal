@@ -17,7 +17,14 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def user():
     User = get_user_model()
-    return User.objects.create_user(username='testuser', password='testpass')
+    user, created = User.objects.get_or_create(
+        username='testuser',
+        defaults={'password': 'testpass'}
+    )
+    if created:
+        user.set_password('testpass')
+        user.save()
+    return user
 
 @pytest.fixture
 def authenticated_client(user):

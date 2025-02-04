@@ -8,6 +8,7 @@ from allauth.socialaccount.views import ConnectionsView
 from django.contrib.auth import get_user_model
 from allauth.account.views import SignupView
 from django.urls import reverse_lazy
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -67,5 +68,8 @@ def social_connect(request):
 def complete(request):
     request.user.profile.has_completed_onboarding = True
     request.user.profile.save()
-    messages.success(request, "Welcome to SoCal! Your profile is now set up.")
-    return render(request, 'onboarding/complete.html')
+    messages.success(request, "Welcome to SocialCal! Your profile is now set up.")
+    
+    # Get current date for the calendar week view
+    today = timezone.localtime()
+    return redirect('calendar:week', year=today.year, month=today.month, day=today.day)

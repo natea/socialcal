@@ -8,8 +8,9 @@ import pytz
 
 @login_required
 def calendar_view(request):
+    """Default calendar view - redirects to week view"""
     today = timezone.localtime()
-    return month_view(request, today.year, today.month)
+    return week_view(request, today.year, today.month, today.day)
 
 @login_required
 def month_view(request, year, month):
@@ -50,6 +51,7 @@ def month_view(request, year, month):
             'prev_month': (current_date - timedelta(days=1)).replace(day=1),
             'next_month': (current_date + timedelta(days=32)).replace(day=1),
             'timezone': user_timezone,
+            'view_type': 'month',
         }
         return render(request, 'calendar_app/month.html', context)
     finally:
@@ -57,10 +59,52 @@ def month_view(request, year, month):
         timezone.deactivate()
 
 @login_required
-def week_view(request, year, week):
-    # Add week view logic
-    context = {'year': year, 'week': week}
-    return render(request, 'calendar_app/week.html', context)
+def week_view(request, year, month, day):
+    # Get user's timezone from session or default to Eastern
+    user_timezone = pytz.timezone(request.session.get('event_timezone', 'America/New_York'))
+    timezone.activate(user_timezone)
+    
+    try:
+        # Create datetime object for the selected date
+        current_date = datetime(year, month, day)
+        current_date = user_timezone.localize(current_date)
+        
+        # Get the start and end of the week
+        week_start = current_date - timedelta(days=current_date.weekday())  # Monday
+        week_end = week_start + timedelta(days=6)  # Sunday
+        
+        # Convert to UTC for database query
+        week_start_utc = week_start.astimezone(pytz.UTC)
+        week_end_utc = week_end.astimezone(pytz.UTC)
+        
+        # Query events for the week
+        events = Event.objects.filter(
+            start_time__gte=week_start_utc,
+            start_time__lte=week_end_utc,
+            user=request.user
+        ).order_by('start_time')
+        
+        # Generate dates for the week view
+        week_dates = []
+        for i in range(7):
+            date = week_start + timedelta(days=i)
+            week_dates.append({
+                'date': date,
+                'today': date.date() == timezone.localtime().date(),
+            })
+        
+        context = {
+            'week_dates': week_dates,
+            'events': events,
+            'selected_date': current_date,
+            'current_date': current_date,
+            'timezone': user_timezone,
+            'view_type': 'week',
+        }
+        return render(request, 'calendar_app/week.html', context)
+    finally:
+        # Reset timezone to UTC to avoid affecting other views
+        timezone.deactivate()
 
 @login_required
 def day_view(request, year, month, day):

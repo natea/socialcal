@@ -39,14 +39,19 @@ class WeekViewTests(TestCase):
 
     def test_week_view_get(self):
         """Test that the week view loads correctly"""
-        response = self.client.get(reverse('events:week'))
+        today = timezone.now()
+        response = self.client.get(reverse('calendar:week', kwargs={
+            'year': today.year,
+            'month': today.month,
+            'day': today.day
+        }))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'calendar_app/week.html')
 
     def test_week_view_with_date(self):
         """Test week view with specific date parameters"""
         date = self.week_start + timedelta(days=14)  # Two weeks from now
-        response = self.client.get(reverse('events:week_date', kwargs={
+        response = self.client.get(reverse('calendar:week', kwargs={
             'year': date.year,
             'month': date.month,
             'day': date.day
@@ -56,7 +61,12 @@ class WeekViewTests(TestCase):
 
     def test_week_view_context(self):
         """Test that the week view provides correct context"""
-        response = self.client.get(reverse('events:week'))
+        today = timezone.now()
+        response = self.client.get(reverse('calendar:week', kwargs={
+            'year': today.year,
+            'month': today.month,
+            'day': today.day
+        }))
         self.assertTrue('week_dates' in response.context)
         self.assertTrue('selected_date' in response.context)
         self.assertTrue('events' in response.context)
@@ -120,7 +130,12 @@ class WeekViewTests(TestCase):
         timezones_to_test = ['UTC', 'America/New_York', 'Asia/Tokyo']
         for tz_name in timezones_to_test:
             with self.settings(TIME_ZONE=tz_name):
-                response = self.client.get(reverse('events:week'))
+                today = timezone.now()
+                response = self.client.get(reverse('calendar:week', kwargs={
+                    'year': today.year,
+                    'month': today.month,
+                    'day': today.day
+                }))
                 self.assertEqual(response.status_code, 200)
                 
                 # Get events for the day in the current timezone
@@ -133,12 +148,17 @@ class WeekViewTests(TestCase):
     def test_week_navigation(self):
         """Test that week navigation returns correct dates"""
         # Test current week
-        response = self.client.get(reverse('events:week'))
+        today = timezone.now()
+        response = self.client.get(reverse('calendar:week', kwargs={
+            'year': today.year,
+            'month': today.month,
+            'day': today.day
+        }))
         current_week = response.context['week_dates']
         
         # Test next week
         next_week_start = self.week_start + timedelta(days=7)
-        response = self.client.get(reverse('events:week_date', kwargs={
+        response = self.client.get(reverse('calendar:week', kwargs={
             'year': next_week_start.year,
             'month': next_week_start.month,
             'day': next_week_start.day

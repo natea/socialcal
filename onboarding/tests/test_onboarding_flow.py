@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from allauth.socialaccount.models import SocialApp, SocialAccount, SocialToken
 from profiles.models import Profile
 from unittest.mock import patch, MagicMock
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -134,9 +135,20 @@ class TestOnboardingFlow:
         """Test completing the onboarding process"""
         client.force_login(user)
         response = client.get(reverse('onboarding:complete'))
-        assert response.status_code == 200
+        assert response.status_code == 302  # Expect redirect instead of 200
+        
+        # Verify the user's profile is updated
         user.refresh_from_db()
         assert user.profile.has_completed_onboarding
+        
+        # Verify redirect to calendar week view
+        today = timezone.now()
+        expected_url = reverse('calendar:week', kwargs={
+            'year': today.year,
+            'month': today.month,
+            'day': today.day
+        })
+        assert response.url == expected_url
 
     @patch('allauth.socialaccount.providers.oauth2.views.OAuth2Adapter.complete_login')
     def test_google_calendar_permissions(self, mock_complete_login, client, user, google_app):
