@@ -3,68 +3,165 @@
 {% block title %}{{ profile.get_full_name }}'s Profile{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card">
-            {% if profile.avatar %}
-                <img src="{{ profile.avatar.url }}" class="card-img-top" alt="{{ profile.get_full_name }}">
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">{{ profile.get_full_name }}</h5>
-                <p class="text-muted">{{ profile.user.email }}</p>
-                {% if profile.bio %}
-                    <p class="card-text">{{ profile.bio }}</p>
-                {% endif %}
-                {% if profile.location %}
-                    <p class="card-text"><small class="text-muted">📍 {{ profile.location }}</small></p>
-                {% endif %}
-                {% if user == profile.user %}
-                    <a href="{% url 'profiles:edit' email=user.email %}" class="btn btn-primary">Edit Profile</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-8">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3>Upcoming Events</h3>
-            {% if user == profile.user %}
-                <div class="text-muted">
-                    <small>
-                        Calendar is {% if profile.calendar_public %}public{% else %}private{% endif %}
-                        <a href="{% url 'profiles:edit' email=user.email %}" class="ms-2">
-                            <i class="bi bi-gear"></i> Change
-                        </a>
-                    </small>
-                </div>
-            {% endif %}
-        </div>
+<style>
+.bg-purple {
+    background-color: #6f42c1;
+}
+</style>
 
-        {% if can_view_events %}
-            {% if events %}
-                {% for event in events %}
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ event.title }}</h5>
-                            <h6 class="card-subtitle mb-2 text-muted">
-                                {{ event.start_time|date:"F j, Y g:i A" }}
-                                {% if event.venue_name %}
-                                    <br><small>📍 {{ event.venue_name }}</small>
-                                {% endif %}
-                            </h6>
-                            <p class="card-text">{{ event.description|truncatewords:30 }}</p>
-                            <a href="{% url 'events:detail' pk=event.pk %}" class="card-link">View Details</a>
+<div class="container">
+    <h1 class="mb-4">Profile</h1>
+    
+    <div class="row">
+        <!-- User Info Section -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        {% if profile.avatar %}
+                            <img src="{{ profile.avatar.url }}" alt="{{ profile.get_full_name }}" class="rounded-circle me-3" style="width: 64px; height: 64px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded-circle bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                <i class="bi bi-person text-white" style="font-size: 2rem;"></i>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <h2 class="h4 mb-0">{{ profile.get_full_name }}</h2>
+                            <p class="text-muted mb-0">{{ profile.user.email }}</p>
                         </div>
                     </div>
-                {% endfor %}
-            {% else %}
-                <p>No upcoming events.</p>
-            {% endif %}
-        {% else %}
-            <div class="alert alert-info">
-                <i class="bi bi-lock"></i>
-                This user's calendar is private.
+
+                    <div class="mb-3">
+                        <p class="mb-1"><strong>Events This Week:</strong> {{ events_this_week|length }}</p>
+                        <p class="mb-0"><strong>Groups Created:</strong> {{ user.groups.count }}</p>
+                    </div>
+                </div>
             </div>
-        {% endif %}
+        </div>
+
+        <!-- Connected Accounts Section -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Connected Accounts</h3>
+                    <div class="list-group">
+                        <div class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-calendar me-2"></i>
+                            <span>Google Calendar</span>
+                            {% if profile.google_calendar_connected %}
+                                <span class="badge bg-success ms-auto">Connected</span>
+                            {% else %}
+                                <a href="{% url 'socialaccount_connections' %}" class="btn btn-sm btn-outline-primary ms-auto">Connect</a>
+                            {% endif %}
+                        </div>
+                        <div class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-facebook me-2"></i>
+                            <span>Facebook</span>
+                            {% if 'facebook' in social_accounts %}
+                                <span class="badge bg-success ms-auto">Connected</span>
+                            {% else %}
+                                <a href="{% url 'socialaccount_connections' %}" class="btn btn-sm btn-outline-primary ms-auto">Connect</a>
+                            {% endif %}
+                        </div>
+                        <div class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-instagram me-2"></i>
+                            <span>Instagram</span>
+                            {% if 'instagram' in social_accounts %}
+                                <span class="badge bg-success ms-auto">Connected</span>
+                            {% else %}
+                                <a href="{% url 'socialaccount_connections' %}" class="btn btn-sm btn-outline-primary ms-auto">Connect</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Preferences Section -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Event Preferences</h3>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for pref in profile.event_preferences %}
+                            <span class="badge bg-primary">{{ pref }}</span>
+                        {% empty %}
+                            <p class="text-muted mb-0">No preferences set</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Labels Section -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h5 mb-0">Manage Labels</h3>
+                        <button class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-plus-lg me-1"></i>
+                            Add New Label
+                        </button>
+                    </div>
+                    
+                    <div class="list-group">
+                        <div class="list-group-item d-flex align-items-center bg-light">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-purple me-2" style="width: 12px; height: 12px;"></div>
+                                <span>Work</span>
+                                <small class="text-muted ms-2">(2 contacts)</small>
+                            </div>
+                            <div class="ms-auto">
+                                <button class="btn btn-sm btn-link">Edit</button>
+                                <button class="btn btn-sm btn-link text-danger">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex align-items-center bg-light">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary me-2" style="width: 12px; height: 12px;"></div>
+                                <span>Personal</span>
+                                <small class="text-muted ms-2">(1 contact)</small>
+                            </div>
+                            <div class="ms-auto">
+                                <button class="btn btn-sm btn-link">Edit</button>
+                                <button class="btn btn-sm btn-link text-danger">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex align-items-center bg-light">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-danger me-2" style="width: 12px; height: 12px;"></div>
+                                <span>Family</span>
+                                <small class="text-muted ms-2">(2 contacts)</small>
+                            </div>
+                            <div class="ms-auto">
+                                <button class="btn btn-sm btn-link">Edit</button>
+                                <button class="btn btn-sm btn-link text-danger">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex align-items-center bg-light">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-success me-2" style="width: 12px; height: 12px;"></div>
+                                <span>Friends</span>
+                                <small class="text-muted ms-2">(3 contacts)</small>
+                            </div>
+                            <div class="ms-auto">
+                                <button class="btn btn-sm btn-link">Edit</button>
+                                <button class="btn btn-sm btn-link text-danger">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %} 

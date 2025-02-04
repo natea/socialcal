@@ -15,6 +15,15 @@ def profile_detail(request, email):
     user = get_object_or_404(User, email=email)
     profile = get_object_or_404(Profile, user=user)
     
+    # Get this week's events
+    start_of_week = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = start_of_week + timezone.timedelta(days=7)
+    
+    events_this_week = user.events.filter(
+        start_time__gte=start_of_week,
+        start_time__lt=end_of_week
+    )
+    
     # Show events if the profile owner is viewing or if calendar is public
     events = []
     if (request.user.is_authenticated and request.user == user) or profile.calendar_public:
@@ -31,9 +40,17 @@ def profile_detail(request, email):
             ).order_by('start_time')
             events = list(events) + list(private_events)
     
+    # Get social accounts
+    social_accounts = {}
+    if hasattr(user, 'socialaccount_set'):
+        for account in user.socialaccount_set.all():
+            social_accounts[account.provider] = account
+    
     context = {
         'profile': profile,
         'events': events,
+        'events_this_week': events_this_week,
+        'social_accounts': social_accounts,
         'can_view_events': (request.user.is_authenticated and request.user == user) or profile.calendar_public,
     }
     return render(request, 'profiles/detail.html', context)
