@@ -10,10 +10,11 @@ from ..scrapers.generic_crawl4ai import GenericCrawl4AIScraper, EventModel
 class TestGenericCrawl4AIScraper(unittest.TestCase):
     def setUp(self):
         self.current_time = datetime(2025, 1, 24, 16, 31, 1, tzinfo=pytz.timezone('America/New_York'))
-        self.patcher = patch('datetime.datetime')
+        self.patcher = patch('events.utils.time_parser.datetime')
         self.mock_datetime = self.patcher.start()
         self.mock_datetime.now.return_value = self.current_time
-        self.mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+        self.mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs) if args else self.current_time
+        self.mock_datetime.strptime = datetime.strptime
 
     def tearDown(self):
         self.patcher.stop()
@@ -37,16 +38,16 @@ class TestGenericCrawl4AIScraper(unittest.TestCase):
         """Test parsing dates without explicit year"""
         test_cases = [
             # Current month
-            ("01/24", "8:00 PM", "2025-01-24", "20:00:00"),
-            ("January 24", "8:00 PM", "2025-01-24", "20:00:00"),
+            ("01/24", "8:00 PM", "2025-01-24", "20:00:00"),  # Same as current date
+            ("January 24", "8:00 PM", "2025-01-24", "20:00:00"),  # Same as current date
             
             # Future month this year
-            ("03/15", "8:00 PM", "2025-03-15", "20:00:00"),
-            ("March 15", "8:00 PM", "2025-03-15", "20:00:00"),
+            ("03/15", "8:00 PM", "2025-03-15", "20:00:00"),  # Future date this year
+            ("March 15", "8:00 PM", "2025-03-15", "20:00:00"),  # Future date this year
             
-            # Next year (when date would be in the past)
-            ("01/15", "8:00 PM", "2026-01-15", "20:00:00"),  # More than 1 month ago
-            ("December 15", "8:00 PM", "2025-12-15", "20:00:00"),
+            # Past dates (should use next year)
+            ("01/15", "8:00 PM", "2026-01-15", "20:00:00"),  # More than 7 days ago
+            ("December 15", "8:00 PM", "2025-12-15", "20:00:00"),  # Future date this year
         ]
         
         for date_str, time_str, expected_date, expected_time in test_cases:

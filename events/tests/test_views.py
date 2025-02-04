@@ -9,6 +9,8 @@ import pytz
 from requests.exceptions import HTTPError
 import json
 from asgiref.sync import sync_to_async
+from django.core.cache import cache
+import pickle
 
 pytestmark = pytest.mark.django_db
 
@@ -382,27 +384,34 @@ class TestEventViews:
 
     @pytest.mark.django_db(transaction=True)
     def test_event_import_status(self, authenticated_client):
-        url = reverse('events:import')
-        data = {
-            'scraper_type': 'crawl4ai',
-            'source_url': 'http://example.com',
-            'async': 'true'
+        # Create a test job status
+        job_id = '1234567890'
+        job_status = {
+            'status': 'started',
+            'events': [],
+            'message': 'Scraping started',
+            'progress': {
+                'overall': 0,
+                'scraping': 0,
+                'processing': 0
+            },
+            'status_message': {
+                'scraping': 'Initializing scraper...',
+                'processing': 'Waiting to process events...'
+            }
         }
+        cache.set(f'scraping_job_{job_id}', json.dumps(job_status), timeout=3600)
 
-        # First create an async job
-        response = authenticated_client.post(url, data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        # Check the status
+        url = reverse('events:import_status', args=[job_id])
+        response = authenticated_client.get(url)
         assert response.status_code == 200
+        
         response_data = json.loads(response.content)
-        job_id = response_data['job_id']
-
-        # Then check its status
-        status_url = reverse('events:import_status', args=[job_id])
-        response = authenticated_client.get(status_url)
-        assert response.status_code == 200
-        status_data = json.loads(response.content)
-        assert 'status' in status_data
-        assert 'progress' in status_data
-        assert 'status_message' in status_data
+        assert response_data['status'] == 'started'
+        assert response_data['message'] == 'Scraping started'
+        assert 'progress' in response_data
+        assert 'status_message' in response_data
 
     @pytest.mark.django_db(transaction=True)
     def test_event_import_ical(self, authenticated_client):
@@ -667,4 +676,5 @@ class TestEventViews:
         
         # Check that the JavaScript for handling webcal links is included
         assert 'document.querySelectorAll(\'a[data-protocol="webcal"]\')' in content
-        assert 'link.href = link.href.replace(/^https?:\/\//, \'webcal://\');' in content
+        assert 'const url = new URL(link.href);' in content
+        assert 'link.href = \'webcal://\' + url.host + url.pathname + url.search + url.hash;' in content

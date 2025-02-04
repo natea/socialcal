@@ -74,11 +74,11 @@ scraping_locks = {}
 def get_job_status(job_id):
     """Get job status from Redis cache"""
     status = cache.get(f'scraping_job_{job_id}')
-    return pickle.loads(status) if status else None
+    return json.loads(status) if status else None
 
 def set_job_status(job_id, status):
     """Set job status in Redis cache"""
-    cache.set(f'scraping_job_{job_id}', pickle.dumps(status), timeout=3600)  # 1 hour timeout
+    cache.set(f'scraping_job_{job_id}', json.dumps(status), timeout=3600)  # 1 hour timeout
 
 @login_required
 def event_list(request):
@@ -854,11 +854,11 @@ def get_day_events(request, date):
         date_obj = datetime.strptime(date, '%Y-%m-%d')
         date_obj = timezone.make_aware(date_obj)
         
-        # Filter events for the current user and order by start_time and id
+        # Filter events for the current user
         events = Event.objects.filter(
             user=request.user,
             start_time__date=date_obj.date()
-        ).order_by('start_time', 'id')  # Add stable ordering by id
+        ).order_by('start_time')
         
         events_data = [{
             'id': event.id,

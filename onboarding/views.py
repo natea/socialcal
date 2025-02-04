@@ -49,7 +49,7 @@ def calendar_sync(request):
         provider='google'
     ).first()
     
-    if google_account and request.user.profile.google_calendar_connected:
+    if google_account and request.user.profile.has_google_calendar_access:
         # If already connected with calendar scope, redirect to next step
         return redirect('onboarding:social_connect')
         

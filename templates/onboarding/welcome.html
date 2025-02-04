@@ -101,10 +101,10 @@ a:hover {
 {% block content %}
 <div class="onboarding-container">
     <div class="onboarding-icon">
-        <i class="bi bi-stars"></i>
+        <i class="bi bi-calendar-event"></i>
     </div>
-    <h1 class="onboarding-title">Welcome to SoCal!</h1>
-    <p class="onboarding-text">Let's get your social calendar set up in just a few fun steps!</p>
+    <h1 class="onboarding-title">Connect Your Calendar</h1>
+    <p class="onboarding-text">Sync your Google Calendar to never miss an event!</p>
     
     <a href="{% provider_login_url 'google' process='oauth' scope='openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' next='/onboarding/event-types/' %}" class="google-button">
         <img src="{% static 'images/google-icon.png' %}" alt="Google" class="google-icon" width="20">
