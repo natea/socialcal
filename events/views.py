@@ -24,6 +24,8 @@ from django.urls import reverse
 import re
 from django.db import models
 from django.utils import timezone
+from datetime import datetime, timedelta
+from django.views.generic import TemplateView
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -798,3 +800,75 @@ def export_ical(request, events=None):
     response['X-Webcal-URL'] = webcal_url
     
     return response
+
+class WeekView(TemplateView):
+    template_name = 'calendar_app/week.html'
+
+    def get_week_dates(self, base_date):
+        # Find the start of the week (Monday)
+        start = base_date - timedelta(days=base_date.weekday())
+        dates = []
+        for i in range(7):
+            current_date = start + timedelta(days=i)
+            dates.append({
+                'date': current_date,
+                'today': current_date.date() == timezone.now().date()
+            })
+        return dates
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get the date from URL parameters or use today
+        year = self.kwargs.get('year', timezone.now().year)
+        month = self.kwargs.get('month', timezone.now().month)
+        day = self.kwargs.get('day', timezone.now().day)
+        
+        try:
+            current_date = timezone.make_aware(datetime(year, month, day))
+        except ValueError:
+            current_date = timezone.now()
+        
+        # Get week dates
+        week_dates = self.get_week_dates(current_date)
+        
+        # Get events for the selected date
+        events = Event.objects.filter(
+            start_time__date=current_date.date()
+        ).order_by('start_time')
+        
+        context.update({
+            'week_dates': week_dates,
+            'week_start': week_dates[0]['date'],
+            'selected_date': current_date,
+            'month_year': current_date.strftime('%B %Y'),
+            'events': events,
+            'timezone': self.request.user.timezone if hasattr(self.request.user, 'timezone') else 'UTC'
+        })
+        return context
+
+def get_day_events(request, date):
+    """API endpoint to get events for a specific day"""
+    try:
+        date_obj = datetime.strptime(date, '%Y-%m-%d')
+        date_obj = timezone.make_aware(date_obj)
+        
+        # Filter events for the current user
+        events = Event.objects.filter(
+            user=request.user,
+            start_time__date=date_obj.date()
+        ).order_by('start_time')
+        
+        events_data = [{
+            'id': event.id,
+            'title': event.title,
+            'start_time': event.start_time.isoformat(),
+            'end_time': event.end_time.isoformat() if event.end_time else None,
+            'location': event.get_full_address() if hasattr(event, 'get_full_address') else event.location
+        } for event in events]
+        
+        return JsonResponse({'events': events_data})
+    except ValueError as e:
+        return JsonResponse({'error': f'Invalid date format: {str(e)}'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

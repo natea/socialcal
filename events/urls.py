@@ -14,4 +14,7 @@ urlpatterns = [
     path('export/', views.event_export, name='export'),
     path('spotify/search/', views.spotify_search, name='spotify_search'),
     path('export/ical/', views.export_ical, name='export_ical'),
+    path('week/', views.WeekView.as_view(), name='week'),
+    path('week/<int:year>/<int:month>/<int:day>/', views.WeekView.as_view(), name='week_date'),
+    path('api/events/<str:date>/', views.get_day_events, name='day_events'),
 ]

@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% load tz %}
+
+{% block title %}Calendar - Week of {{ week_start|date:"F j, Y" }}{% endblock %}
+
+{% block content %}
+{% timezone timezone %}
+<div class="container">
+    <!-- Calendar Header -->
+    <div class="calendar-header mb-4">
+        <h2>{{ month_year }}</h2>
+        <div class="d-flex justify-content-between align-items-center">
+            <button class="btn btn-link" id="prevWeek">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button class="btn btn-outline-primary" id="todayBtn">Today</button>
+            <button class="btn btn-link" id="nextWeek">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Week View -->
+    <div class="week-view mb-4">
+        <div class="d-flex justify-content-between">
+            {% for date in week_dates %}
+            <div class="day-column text-center" 
+                 data-date="{{ date.date|date:'Y-m-d' }}"
+                 style="flex: 1; cursor: pointer;">
+                <div class="day-name">{{ date.date|date:"D" }}</div>
+                <div class="day-number {% if date.today %}today{% endif %} {% if date.date|date:'Y-m-d' == selected_date|date:'Y-m-d' %}selected{% endif %} rounded-circle d-inline-block"
+                     style="width: 40px; height: 40px; line-height: 36px;">
+                    {{ date.date|date:"j" }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Day Detail View -->
+    <div class="day-detail mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 id="selectedDate">{{ selected_date|date:"l, F j, Y" }}</h3>
+            <button class="btn btn-primary" id="addEvent">
+                <i class="bi bi-plus"></i> Add Event
+            </button>
+        </div>
+        
+        <div id="dayEvents">
+            {% if events %}
+                {% for event in events %}
+                <div class="event-card p-3 mb-2 bg-light rounded">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1">{{ event.title }}</h5>
+                            <p class="mb-1 text-muted">
+                                {{ event.start_time|date:"g:i A" }} - {{ event.end_time|date:"g:i A" }}
+                            </p>
+                            {% if event.location %}
+                            <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ event.location }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="event-actions">
+                            <a href="{% url 'events:detail' pk=event.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-info-circle"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-center text-muted">No events for this day. Time to plan something fun!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.day-column:hover .day-number:not(.selected) {
+    background-color: #f0f0f0;
+}
+.day-column .day-number.selected {
+    background-color: var(--bs-primary);
+    color: white;
+}
+.day-column .day-number.today:not(.selected) {
+    border: 2px solid var(--bs-primary);
+    color: var(--bs-primary);
+    background-color: transparent;
+}
+.event-card:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dayColumns = document.querySelectorAll('.day-column');
+    
+    // Mark today's date initially
+    const today = new Date().toISOString().split('T')[0];
+    dayColumns.forEach(column => {
+        const dayNumber = column.querySelector('.day-number');
+        if (column.dataset.date === today) {
+            dayNumber.classList.add('today');
+        }
+    });
+    
+    dayColumns.forEach(column => {
+        column.addEventListener('click', function() {
+            // Remove selected class from all day numbers
+            dayColumns.forEach(col => {
+                col.querySelector('.day-number').classList.remove('selected');
+            });
+            
+            // Add selected class to clicked day number
+            this.querySelector('.day-number').classList.add('selected');
+            
+            // Get the date from data attribute
+            const date = this.dataset.date;
+            
+            // Update selected date display first
+            const selectedDate = new Date(date + 'T12:00:00');  // Add noon time to avoid timezone issues
+            document.getElementById('selectedDate').textContent = selectedDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            
+            // Then fetch events for the selected date
+            fetch(`{% url 'events:day_events' 'DATE' %}`.replace('DATE', date))
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update events list
+                    const eventsContainer = document.getElementById('dayEvents');
+                    if (data.events.length === 0) {
+                        eventsContainer.innerHTML = '<p class="text-center text-muted">No events for this day. Time to plan something fun!</p>';
+                    } else {
+                        eventsContainer.innerHTML = data.events.map(event => `
+                            <div class="event-card p-3 mb-2 bg-light rounded">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h5 class="mb-1">${event.title}</h5>
+                                        <p class="mb-1 text-muted">
+                                            ${new Date(event.start_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}
+                                            ${event.end_time ? ` - ${new Date(event.end_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}` : ''}
+                                        </p>
+                                        ${event.location ? `<p class="mb-0"><i class="bi bi-geo-alt"></i> ${event.location}</p>` : ''}
+                                    </div>
+                                    <div class="event-actions">
+                                        <a href="/events/${event.id}/" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const eventsContainer = document.getElementById('dayEvents');
+                    eventsContainer.innerHTML = '<p class="text-center text-danger">Error loading events. Please try again.</p>';
+                });
+        });
+    });
+
+    // Add click handlers for navigation buttons
+    document.getElementById('prevWeek').addEventListener('click', function() {
+        const firstDate = new Date(document.querySelector('.day-column').dataset.date + 'T12:00:00');
+        firstDate.setDate(firstDate.getDate() - 7);  // Go back 7 days from the first day of current week
+        const year = firstDate.getFullYear();
+        const month = firstDate.getMonth() + 1;  // JavaScript months are 0-based
+        const day = firstDate.getDate();
+        window.location.href = `/events/week/${year}/${month}/${day}/`;
+    });
+
+    document.getElementById('nextWeek').addEventListener('click', function() {
+        const firstDate = new Date(document.querySelector('.day-column').dataset.date + 'T12:00:00');
+        firstDate.setDate(firstDate.getDate() + 7);  // Go forward 7 days from the first day of current week
+        const year = firstDate.getFullYear();
+        const month = firstDate.getMonth() + 1;  // JavaScript months are 0-based
+        const day = firstDate.getDate();
+        window.location.href = `/events/week/${year}/${month}/${day}/`;
+    });
+
+    document.getElementById('todayBtn').addEventListener('click', function() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;  // JavaScript months are 0-based
+        const day = today.getDate();
+        window.location.href = `/events/week/${year}/${month}/${day}/`;
+    });
+
+    // Add click handler for Add Event button
+    document.getElementById('addEvent').addEventListener('click', function() {
+        window.location.href = "{% url 'events:create' %}";
+    });
+});
+</script>
+{% endtimezone %}
+{% endblock %} 
