@@ -142,7 +142,23 @@ def event_create(request):
 @login_required
 def event_detail(request, pk):
     event = get_object_or_404(Event, pk=pk, user=request.user)
-    return render(request, 'events/detail.html', {'event': event})
+    
+    # Get the previous and next events chronologically
+    prev_event = Event.objects.filter(
+        user=request.user,
+        start_time__lt=event.start_time
+    ).order_by('-start_time').first()
+    
+    next_event = Event.objects.filter(
+        user=request.user,
+        start_time__gt=event.start_time
+    ).order_by('start_time').first()
+    
+    return render(request, 'events/detail.html', {
+        'event': event,
+        'prev_event': prev_event,
+        'next_event': next_event,
+    })
 
 @login_required
 def event_edit(request, pk):

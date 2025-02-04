@@ -1,65 +1,428 @@
 {% extends 'events/base.html' %}
+{% load static %}
 
 {% block title %}{{ event.title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .event-banner {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    .event-header {
+        margin-top: 20px;
+    }
+    .event-meta {
+        color: #666;
+        margin: 10px 0;
+    }
+    .label-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 16px;
+        background-color: #f0f0f0;
+        margin-right: 8px;
+        font-size: 14px;
+    }
+    .label-tag .remove-label {
+        margin-left: 6px;
+        width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        border-radius: 50%;
+    }
+    .label-tag .remove-label:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+    .add-label-button {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 16px;
+        background-color: #f0f0f0;
+        border: none;
+        font-size: 14px;
+        color: #666;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .add-label-button:hover {
+        background-color: #e0e0e0;
+    }
+    .add-label-button i {
+        margin-right: 4px;
+    }
+    .register-button {
+        width: 100%;
+        padding: 12px;
+        border-radius: 8px;
+        background-color: #6c2bd9;
+        color: white;
+        border: none;
+        margin: 20px 0;
+    }
+    .friend-response {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+    .friend-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #ddd;
+        margin-right: 12px;
+    }
+    .friend-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .friend-actions i {
+        font-size: 18px;
+        color: #666;
+        cursor: pointer;
+    }
+    .friend-actions i.active {
+        color: #6c2bd9;
+    }
+    .friend-actions i.bi-star-fill.active {
+        color: #ffd700;
+    }
+    .friend-actions i.bi-hand-thumbs-up-fill.active {
+        color: #28a745;
+    }
+    .friend-actions i.bi-hand-thumbs-down-fill.active {
+        color: #dc3545;
+    }
+    .friend-actions .action-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .nudge-button {
+        color: #6c2bd9;
+        text-decoration: none;
+        font-size: 14px;
+    }
+    .spotify-preview {
+        margin: 20px 0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .bottom-navigation {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        margin-top: 40px;
+        padding: 20px 0;
+    }
+    .nav-button {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: none;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    .nav-button i {
+        font-size: 24px;
+        color: #666;
+    }
+    .nav-button.active {
+        background-color: #6c2bd9;
+    }
+    .nav-button.active i {
+        color: #fff;
+    }
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .icon-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #666;
+        text-decoration: none;
+    }
+    .icon-button:hover {
+        background-color: #f8f9fa;
+        color: #666;
+    }
+    .icon-button i {
+        font-size: 18px;
+    }
+    .back-button {
+        margin-right: auto;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8">
-            <h1>{{ event.title }}</h1>
-            <p class="text-muted">{{ event.start_time|date:"F j, Y g:i A" }}</p>
-            
-            <div class="mb-4">
-                {{ event.description|linebreaks }}
-            </div>
-            
-            {% if event.location %}
-            <div class="mb-4">
-                <h5>Location</h5>
-                <p>{{ event.location }}</p>
-            </div>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{% url 'calendar:week' year=event.start_time|date:'Y' month=event.start_time|date:'m' day=event.start_time|date:'d' %}" class="icon-button back-button" title="Back to Week View">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div class="header-actions">
+            {% if user.is_authenticated %}
+                <a href="{% url 'events:edit' event.id %}" class="icon-button" title="Edit Event">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <a href="{% url 'events:delete' event.id %}" class="icon-button" title="Delete Event">
+                    <i class="bi bi-trash"></i>
+                </a>
             {% endif %}
-            
-            <div class="event-actions mt-3">
-                {% if user.is_authenticated %}
-                    <a href="{% url 'events:edit' event.id %}" class="btn btn-primary">Edit Event</a>
-                    <a href="{% url 'events:delete' event.id %}" class="btn btn-danger">Delete Event</a>
+            <a href="{% url 'events:export_ical' %}?event_id={{ event.id }}" class="icon-button" title="Download iCal">
+                <i class="bi bi-calendar"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="event-container">
+        {% if event.image_url %}
+            <img src="{{ event.image_url }}" alt="{{ event.title }}" class="event-banner">
+        {% else %}
+            <img src="https://placehold.co/1200x400/e9ecef/adb5bd?text=No+Event+Image" alt="Event placeholder" class="event-banner">
+        {% endif %}
+
+        <div class="event-header">
+            <h2>{{ event.title }}</h2>
+            <div class="event-meta">
+                <p><i class="bi bi-calendar"></i> {{ event.start_time|date:"M d, Y \a\t g:i A" }}</p>
+                {% if event.location %}
+                    <p><i class="bi bi-geo-alt"></i> {{ event.location }}</p>
                 {% endif %}
-                <a href="{% url 'events:export_ical' %}?event_id={{ event.id }}" class="btn btn-secondary" data-protocol="webcal">Subscribe to Calendar</a>
-                <a href="{% url 'events:export_ical' %}?event_id={{ event.id }}" class="btn btn-outline-secondary">Download iCal</a>
-                <a href="{% url 'events:list' %}" class="btn btn-outline-secondary">Back to Events</a>
             </div>
-        </div>
-        
-        <div class="col-md-4">
-            {% if event.image_url %}
-            <div class="mb-4">
-                <img src="{{ event.image_url }}" class="img-fluid rounded" alt="{{ event.title }}">
-            </div>
+
+            {% if event.description %}
+                <div class="event-description mb-4">
+                    {{ event.description|linebreaks }}
+                </div>
             {% endif %}
-            
+
+            <div class="event-labels">
+                <span class="label-tag">
+                    Work
+                    <span class="remove-label">
+                        <i class="bi bi-x"></i>
+                    </span>
+                </span>
+                <span class="label-tag">
+                    Networking
+                    <span class="remove-label">
+                        <i class="bi bi-x"></i>
+                    </span>
+                </span>
+                {% for label in event.labels.all %}
+                    <span class="label-tag">
+                        {{ label.name }}
+                        <span class="remove-label">
+                            <i class="bi bi-x"></i>
+                        </span>
+                    </span>
+                {% endfor %}
+                <button class="add-label-button">
+                    <i class="bi bi-plus"></i>
+                    Add Label
+                </button>
+            </div>
+
             {% if event.spotify_track_id %}
-            <div class="spotify-preview mb-4">
-                <iframe src="https://open.spotify.com/embed/track/{{ event.spotify_track_id }}?compact=1"
-                        width="100%"
-                        height="80"
-                        frameborder="0"
-                        allowtransparency="true"
-                        allow="encrypted-media">
-                </iframe>
-            </div>
+                <div class="spotify-preview">
+                    <iframe src="https://open.spotify.com/embed/track/{{ event.spotify_track_id }}?compact=1"
+                            width="100%"
+                            height="80"
+                            frameborder="0"
+                            allowtransparency="true"
+                            allow="encrypted-media">
+                    </iframe>
+                </div>
             {% endif %}
+
+            {% if not user.is_authenticated %}
+                <div class="registration-status">Not Registered</div>
+            {% endif %}
+
+            <button class="register-button">
+                {% if user.is_authenticated %}
+                    {% if user in event.attendees.all %}
+                        Unregister from Event
+                    {% else %}
+                        Register for Event
+                    {% endif %}
+                {% else %}
+                    Register for Event
+                {% endif %}
+            </button>
+
+            <div class="friend-responses">
+                <h3>Friend Responses</h3>
+                <!-- Placeholder friends -->
+                <div class="friend-response">
+                    <img src="https://placehold.co/40x40/6c2bd9/ffffff?text=A" alt="Alex's avatar" class="friend-avatar">
+                    <div class="friend-name">Alex</div>
+                    <div class="friend-actions">
+                        <div class="action-group">
+                            <i class="bi bi-star-fill active" title="Favorite"></i>
+                            <i class="bi bi-person-check-fill active" title="Going"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="friend-response">
+                    <img src="https://placehold.co/40x40/28a745/ffffff?text=S" alt="Sam's avatar" class="friend-avatar">
+                    <div class="friend-name">Sam</div>
+                    <div class="friend-actions">
+                        <div class="action-group">
+                            <i class="bi bi-hand-thumbs-up-fill active" title="Going"></i>
+                            <i class="bi bi-hand-thumbs-down" title="Not Going"></i>
+                        </div>
+                        <a href="#" class="nudge-button">Nudge</a>
+                    </div>
+                </div>
+                <div class="friend-response">
+                    <img src="https://placehold.co/40x40/dc3545/ffffff?text=J" alt="Jordan's avatar" class="friend-avatar">
+                    <div class="friend-name">Jordan</div>
+                    <div class="friend-actions">
+                        <div class="action-group">
+                            <i class="bi bi-question-circle" title="Pending"></i>
+                            <i class="bi bi-hand-thumbs-down-fill active" title="Not Going"></i>
+                        </div>
+                        <a href="#" class="nudge-button">Nudge</a>
+                    </div>
+                </div>
+                <!-- Dynamic friend responses -->
+                {% for response in event.responses.all %}
+                    <div class="friend-response">
+                        <div class="friend-avatar"></div>
+                        <div class="friend-name">{{ response.user.get_full_name }}</div>
+                        <div class="friend-actions">
+                            <div class="action-group">
+                                <i class="bi bi-star{% if response.is_favorite %}-fill active{% endif %}" title="Favorite"></i>
+                                <i class="bi bi-hand-thumbs-up{% if response.status == 'going' %}-fill active{% endif %}" title="Going"></i>
+                                <i class="bi bi-hand-thumbs-down{% if response.status == 'not_going' %}-fill active{% endif %}" title="Not Going"></i>
+                            </div>
+                            {% if response.status == 'pending' or response.status == 'not_going' %}
+                                <a href="#" class="nudge-button">Nudge</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
+    </div>
+
+    <div class="bottom-navigation">
+        <button class="nav-button" {% if prev_event %}data-event-id="{{ prev_event.id }}"{% endif %}>
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        <button class="nav-button">
+            <i class="bi bi-hand-thumbs-down"></i>
+        </button>
+        <button class="nav-button active">
+            <i class="bi bi-star-fill"></i>
+        </button>
+        <button class="nav-button">
+            <i class="bi bi-hand-thumbs-up"></i>
+        </button>
+        <button class="nav-button" {% if next_event %}data-event-id="{{ next_event.id }}"{% endif %}>
+            <i class="bi bi-chevron-right"></i>
+        </button>
     </div>
 </div>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-.spotify-artist-embed {
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-</style>
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle registration button clicks
+    const registerButton = document.querySelector('.register-button');
+    if (registerButton) {
+        registerButton.addEventListener('click', function() {
+            // Add your registration logic here
+        });
+    }
+
+    // Handle nudge button clicks
+    const nudgeButtons = document.querySelectorAll('.nudge-button');
+    nudgeButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Add your nudge logic here
+        });
+    });
+
+    // Handle action icon clicks
+    const actionIcons = document.querySelectorAll('.friend-actions i');
+    actionIcons.forEach(icon => {
+        icon.addEventListener('click', function() {
+            // Toggle fill/active state
+            if (icon.classList.contains('bi-star')) {
+                icon.classList.remove('bi-star');
+                icon.classList.add('bi-star-fill', 'active');
+            } else if (icon.classList.contains('bi-star-fill')) {
+                icon.classList.remove('bi-star-fill', 'active');
+                icon.classList.add('bi-star');
+            } else if (icon.classList.contains('bi-hand-thumbs-up')) {
+                icon.classList.remove('bi-hand-thumbs-up');
+                icon.classList.add('bi-hand-thumbs-up-fill', 'active');
+            } else if (icon.classList.contains('bi-hand-thumbs-up-fill')) {
+                icon.classList.remove('bi-hand-thumbs-up-fill', 'active');
+                icon.classList.add('bi-hand-thumbs-up');
+            } else if (icon.classList.contains('bi-hand-thumbs-down')) {
+                icon.classList.remove('bi-hand-thumbs-down');
+                icon.classList.add('bi-hand-thumbs-down-fill', 'active');
+            } else if (icon.classList.contains('bi-hand-thumbs-down-fill')) {
+                icon.classList.remove('bi-hand-thumbs-down-fill', 'active');
+                icon.classList.add('bi-hand-thumbs-down');
+            }
+        });
+    });
+
+    // Handle bottom navigation clicks
+    const navButtons = document.querySelectorAll('.nav-button');
+    navButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const eventId = button.dataset.eventId;
+            
+            // If this is a navigation arrow with an event ID
+            if (eventId) {
+                window.location.href = `/events/${eventId}/`;
+                return;
+            }
+            
+            // Otherwise, handle the filter buttons (star, thumbs)
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+        });
+    });
+});
+</script>
 {% endblock %} 
