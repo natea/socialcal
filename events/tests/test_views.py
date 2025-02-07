@@ -600,7 +600,7 @@ class TestEventViews:
         # Check for webcal subscription link
         assert f'href="{reverse("events:export_ical")}?event_id={event.id}"' in response.content.decode()
         assert 'data-protocol="webcal"' in response.content.decode()
-        assert 'Subscribe to Calendar' in response.content.decode()
+        assert 'Download iCal' in response.content.decode()
         
         # Check for iCal download link
         assert f'href="{reverse("events:export_ical")}?event_id={event.id}"' in response.content.decode()

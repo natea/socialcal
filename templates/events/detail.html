@@ -222,6 +222,13 @@
                 {% endif %}
             </div>
 
+            {# Calendar Links #}
+            <div class="calendar-links mb-4">
+                <a href="{% url 'events:export_ical' %}?event_id={{ event.id }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-calendar-plus"></i> Download iCal
+                </a>
+            </div>
+
             {% if event.description %}
                 <div class="event-description mb-4">
                     {{ event.description|linebreaks }}

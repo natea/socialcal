@@ -24,7 +24,6 @@ ALLOWED_HOSTS = []
 
 # Modify installed apps based on whether we're testing
 INSTALLED_APPS = [
-    # Django built-in apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -32,18 +31,19 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-    
-    # Third party apps
-    'rest_framework',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'widget_tweaks',
+    'core',
+    'profiles',
+    'events',
+    'onboarding',
 ]
 
-# Only add debug_toolbar if we're not testing and DEBUG is True
-if not TESTING and DEBUG:
-    INSTALLED_APPS += ['debug_toolbar']
+if 'test' not in sys.argv:
+    INSTALLED_APPS.append('debug_toolbar')
 
 # Local apps
 INSTALLED_APPS += [
@@ -200,8 +200,23 @@ CACHES = {
 
 # Debug Toolbar Configuration
 DEBUG_TOOLBAR_CONFIG = {
-    'IS_RUNNING_TESTS': True,  # Allow debug toolbar to work with tests
+    'IS_RUNNING_TESTS': True,
 }
+
+DEBUG_TOOLBAR_PANELS = [
+    'debug_toolbar.panels.versions.VersionsPanel',
+    'debug_toolbar.panels.timer.TimerPanel',
+    'debug_toolbar.panels.settings.SettingsPanel',
+    'debug_toolbar.panels.headers.HeadersPanel',
+    'debug_toolbar.panels.request.RequestPanel',
+    'debug_toolbar.panels.sql.SQLPanel',
+    'debug_toolbar.panels.staticfiles.StaticFilesPanel',
+    'debug_toolbar.panels.templates.TemplatesPanel',
+    'debug_toolbar.panels.cache.CachePanel',
+    'debug_toolbar.panels.signals.SignalsPanel',
+    'debug_toolbar.panels.logging.LoggingPanel',
+    'debug_toolbar.panels.redirects.RedirectsPanel',
+]  # Note: ProfilingPanel is intentionally omitted to avoid conflicts
 
 # Social Account Settings
 SOCIALACCOUNT_PROVIDERS = {

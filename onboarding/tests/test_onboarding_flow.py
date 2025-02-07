@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.test import Client
 from django.contrib.auth import get_user_model
 from allauth.socialaccount.models import SocialApp, SocialAccount, SocialToken
+from django.contrib.sites.models import Site
 from profiles.models import Profile
 from unittest.mock import patch, MagicMock
 from django.utils import timezone
@@ -11,12 +12,15 @@ User = get_user_model()
 
 @pytest.fixture
 def google_app(db):
-    return SocialApp.objects.create(
+    app = SocialApp.objects.create(
         provider='google',
         name='Google',
         client_id='test-client-id',
         secret='test-secret'
     )
+    site = Site.objects.get_current()
+    app.sites.add(site)
+    return app
 
 @pytest.fixture
 def user(db):

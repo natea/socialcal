@@ -74,7 +74,14 @@ scraping_locks = {}
 def get_job_status(job_id):
     """Get job status from Redis cache"""
     status = cache.get(f'scraping_job_{job_id}')
-    return json.loads(status) if status else None
+    if not status:
+        return None
+    if isinstance(status, str):
+        try:
+            return json.loads(status)
+        except json.JSONDecodeError:
+            return None
+    return status
 
 def set_job_status(job_id, status):
     """Set job status in Redis cache"""

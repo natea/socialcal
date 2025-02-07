@@ -1,0 +1,60 @@
+{# No need to extend base template for modal content #}
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title">Delete Label</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+        <p>Are you sure you want to delete the label "{{ label.name }}"?</p>
+    </div>
+    <form method="post" class="delete-label-form" action="{% url 'profiles:delete_label' label.id %}" data-ajax="true">
+        <div class="modal-footer">
+            {% csrf_token %}
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.delete-label-form');
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (form.dataset.ajax) {
+                e.preventDefault();
+                const formData = new FormData(form);
+                
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        // Show success message
+                        if (window.showToast) {
+                            window.showToast(data.message);
+                        }
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (window.showToast) {
+                        window.showToast('An error occurred while deleting the label. Please try again.', 'danger');
+                    }
+                });
+            }
+        });
+    }
+});</script> 

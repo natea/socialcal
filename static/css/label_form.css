@@ -1,0 +1,80 @@
+.color-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 8px 0;
+    margin: 0;
+    list-style: none;
+}
+
+.color-option {
+    margin: 0;
+    position: relative;
+    width: 36px;
+    height: 36px;
+}
+
+.color-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    margin: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.color-option label {
+    display: block;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    z-index: 1;
+    transition: all 0.2s ease;
+}
+
+/* Specific color adjustments for better visibility */
+.color-option label[style*="FFFF00"] {  /* Yellow */
+    border-color: rgba(0, 0, 0, 0.3);
+}
+
+.color-option input[type="radio"]:checked + label {
+    border-color: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.color-option input[type="radio"]:focus + label {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0d6efd;
+}
+
+.color-option input[type="radio"]:checked + label::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+    font-size: 20px;
+}
+
+/* Darker checkmark for light colors */
+.color-option input[type="radio"]:checked + label[style*="FFFF00"]::after {  /* Yellow */
+    color: #000;
+    text-shadow: none;
+}
+
+/* Add hover effect */
+.color-option label:hover {
+    transform: scale(1.1);
+    border-color: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+} 

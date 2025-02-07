@@ -57,3 +57,16 @@ def save_user_profile(sender, instance, **kwargs):
         instance.profile.save()
     except Profile.DoesNotExist:
         Profile.objects.create(user=instance)
+
+class Label(models.Model):
+    name = models.CharField(max_length=50)
+    color = models.CharField(max_length=7)  # For hex color codes
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='labels')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.user.email})"
+
+    class Meta:
+        unique_together = ['name', 'user']
+        ordering = ['name']
