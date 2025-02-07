@@ -20,7 +20,7 @@
              data-date="{{ date.date|date:'Y-m-d' }}"
              style="flex: 1; cursor: pointer;">
             <div class="day-name">{{ date.date|date:"D" }}</div>
-            <div class="day-number {% if date.today %}today{% endif %} {% if date.date|date:'Y-m-d' == selected_date|date:'Y-m-d' %}selected{% endif %} rounded-circle d-inline-block"
+            <div class="day-number rounded-circle d-inline-block"
                  style="width: 40px; height: 40px; line-height: 36px;">
                 {{ date.date|date:"j" }}
             </div>
@@ -70,9 +70,17 @@
 .day-column:hover .day-number:not(.selected) {
     background-color: #f0f0f0;
 }
+.day-column .day-number {
+    border: 2px solid transparent;  /* Add transparent border by default */
+    width: 40px;
+    height: 40px;
+    line-height: 36px;
+    border-radius: 50%;
+}
 .day-column .day-number.selected {
     background-color: var(--bs-primary);
     color: white;
+    border-color: transparent;  /* Remove border when selected */
 }
 .day-column .day-number.today:not(.selected) {
     border: 2px solid var(--bs-primary);
@@ -89,36 +97,58 @@
 document.addEventListener('DOMContentLoaded', function() {
     const dayColumns = document.querySelectorAll('.day-column');
     
-    // Mark today's date initially
-    const today = new Date().toISOString().split('T')[0];
-    dayColumns.forEach(column => {
-        const dayNumber = column.querySelector('.day-number');
-        if (column.dataset.date === today) {
-            dayNumber.classList.add('today');
-        }
-    });
+    function updateDayStates() {
+        // Get today's date in local timezone
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
+        const selectedDate = '{{ selected_date|date:"Y-m-d" }}';
+        
+        // Clear all states first
+        dayColumns.forEach(column => {
+            const dayNumber = column.querySelector('.day-number');
+            dayNumber.classList.remove('today', 'selected');
+        });
+        
+        // Apply correct states
+        dayColumns.forEach(column => {
+            const dayNumber = column.querySelector('.day-number');
+            const date = column.dataset.date;
+            
+            // Compare dates exactly
+            if (date === today) {
+                dayNumber.classList.add('today');
+            }
+            if (date === selectedDate) {
+                dayNumber.classList.add('selected');
+                // If a day is selected, it shouldn't show the today outline
+                if (date === today) {
+                    dayNumber.classList.remove('today');
+                }
+            }
+        });
+    }
+    
+    // Initial state setup
+    updateDayStates();
     
     dayColumns.forEach(column => {
         column.addEventListener('click', function() {
-            // Remove selected class from all day numbers
-            dayColumns.forEach(col => {
-                col.querySelector('.day-number').classList.remove('selected');
-            });
-            
-            // Add selected class to clicked day number
-            this.querySelector('.day-number').classList.add('selected');
-            
-            // Get the date from data attribute
             const date = this.dataset.date;
             
-            // Update selected date display first
-            const selectedDate = new Date(date + 'T12:00:00');  // Add noon time to avoid timezone issues
+            // Update selected date in UI
+            const selectedDate = new Date(date + 'T12:00:00');
             document.getElementById('selectedDate').textContent = selectedDate.toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'long',
                 day: 'numeric',
                 year: 'numeric'
             });
+            
+            // Update day states
+            dayColumns.forEach(col => {
+                col.querySelector('.day-number').classList.remove('selected');
+            });
+            this.querySelector('.day-number').classList.add('selected');
             
             // Then fetch events for the selected date
             fetch(`{% url 'events:day_events' 'DATE' %}`.replace('DATE', date))

@@ -5,6 +5,7 @@ from django.utils import timezone
 from events.models import Event, StarredEvent, EventResponse
 import json
 from datetime import timedelta
+from bs4 import BeautifulSoup
 
 User = get_user_model()
 
@@ -172,6 +173,43 @@ class EventInteractionsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No Starred Events')
         self.assertContains(response, 'Events you star will appear here')
+
+    def test_current_day_highlight_in_week_view(self):
+        """Test that only the current day is highlighted in the week view"""
+        # Get today's date
+        today = timezone.now().date()
+        
+        # Get the week view
+        response = self.client.get(reverse('calendar:week', args=[today.year, today.month, today.day]))
+        self.assertEqual(response.status_code, 200)
+        
+        # Parse the response content
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Find all day number divs
+        day_numbers = soup.find_all('div', class_='day-number')
+        
+        # Find the div containing today's date number
+        today_date_str = str(today.day)
+        today_div = None
+        for div in day_numbers:
+            if div.text.strip() == today_date_str:
+                today_div = div
+                break
+        
+        # Verify we found today's div
+        self.assertIsNotNone(today_div, "Could not find div containing today's date")
+        
+        # Verify the data-date attribute on the parent column matches today's date
+        today_column = today_div.find_parent('div', class_='day-column')
+        self.assertIsNotNone(today_column, "Could not find parent day-column div")
+        
+        expected_date = today.strftime('%Y-%m-%d')
+        self.assertEqual(
+            today_column['data-date'],
+            expected_date,
+            f"Expected data-date to be {expected_date}, got {today_column.get('data-date', 'no date')}"
+        )
 
     def test_event_response_persistence(self):
         """Test that event responses persist correctly"""
