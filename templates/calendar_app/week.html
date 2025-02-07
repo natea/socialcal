@@ -41,24 +41,23 @@
     <div id="dayEvents">
         {% if events %}
             {% for event in events %}
-            <div class="event-card p-3 mb-2 bg-light rounded">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h5 class="mb-1">{{ event.title }}</h5>
-                        <p class="mb-1 text-muted">
-                            {{ event.start_time|date:"g:i A" }} - {{ event.end_time|date:"g:i A" }}
-                        </p>
-                        {% if event.location %}
-                        <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ event.location }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="event-actions">
-                        <a href="{% url 'events:detail' pk=event.pk %}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-info-circle"></i>
-                        </a>
+            {% if event.start_time.date == selected_date.date %}
+            <a href="{% url 'events:detail' pk=event.pk %}" class="text-decoration-none">
+                <div class="event-card p-3 mb-2 bg-light rounded">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1 text-body">{{ event.title }}</h5>
+                            <p class="mb-1 text-muted">
+                                {{ event.start_time|date:"g:i A" }} - {{ event.end_time|date:"g:i A" }}
+                            </p>
+                            {% if event.location %}
+                            <p class="mb-0 text-muted"><i class="bi bi-geo-alt"></i> {{ event.location }}</p>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
+            {% endif %}
             {% endfor %}
         {% else %}
             <p class="text-center text-muted">No events for this day. Time to plan something fun!</p>
@@ -87,9 +86,13 @@
     color: var(--bs-primary);
     background-color: transparent;
 }
+.event-card {
+    transition: box-shadow 0.3s ease, transform 0.1s ease;
+}
 .event-card:hover {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: box-shadow 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+    background-color: #f8f9fa !important;
 }
 </style>
 
@@ -165,23 +168,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         eventsContainer.innerHTML = '<p class="text-center text-muted">No events for this day. Time to plan something fun!</p>';
                     } else {
                         eventsContainer.innerHTML = data.events.map(event => `
-                            <div class="event-card p-3 mb-2 bg-light rounded">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h5 class="mb-1">${event.title}</h5>
-                                        <p class="mb-1 text-muted">
-                                            ${new Date(event.start_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}
-                                            ${event.end_time ? ` - ${new Date(event.end_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}` : ''}
-                                        </p>
-                                        ${event.location ? `<p class="mb-0"><i class="bi bi-geo-alt"></i> ${event.location}</p>` : ''}
-                                    </div>
-                                    <div class="event-actions">
-                                        <a href="/events/${event.id}/" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-info-circle"></i>
-                                        </a>
+                            <a href="/events/${event.id}/" class="text-decoration-none">
+                                <div class="event-card p-3 mb-2 bg-light rounded">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5 class="mb-1 text-body">${event.title}</h5>
+                                            <p class="mb-1 text-muted">
+                                                ${new Date(event.start_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}
+                                                ${event.end_time ? ` - ${new Date(event.end_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}` : ''}
+                                            </p>
+                                            ${event.location ? `<p class="mb-0 text-muted"><i class="bi bi-geo-alt"></i> ${event.location}</p>` : ''}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </a>
                         `).join('');
                     }
                 })
