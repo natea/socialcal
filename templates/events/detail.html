@@ -153,6 +153,13 @@
     .nav-button.active i {
         color: #fff;
     }
+    /* Custom colors for response buttons */
+    .nav-button.response-button[data-response="going"].active {
+        background-color: #28a745;  /* Bootstrap success green */
+    }
+    .nav-button.response-button[data-response="not_going"].active {
+        background-color: #dc3545;  /* Bootstrap danger red */
+    }
     .header-actions {
         display: flex;
         align-items: center;
@@ -186,6 +193,7 @@
 {% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <a href="{% url 'calendar:week' year=event.start_time|date:'Y' month=event.start_time|date:'m' day=event.start_time|date:'d' %}" class="icon-button back-button" title="Back to Week View">
@@ -193,6 +201,9 @@
         </a>
         <div class="header-actions">
             {% if user.is_authenticated %}
+                <a href="{% url 'events:starred' %}" class="icon-button" title="View Starred Events">
+                    <i class="bi bi-star"></i>
+                </a>
                 <a href="{% url 'events:edit' event.id %}" class="icon-button" title="Edit Event">
                     <i class="bi bi-pencil"></i>
                 </a>
@@ -350,14 +361,14 @@
         <button class="nav-button" {% if prev_event %}data-event-id="{{ prev_event.id }}"{% endif %}>
             <i class="bi bi-chevron-left"></i>
         </button>
-        <button class="nav-button">
-            <i class="bi bi-hand-thumbs-down"></i>
+        <button class="nav-button response-button {% if user_response.status == 'not_going' %}active{% endif %}" data-response="not_going">
+            <i class="bi bi-hand-thumbs-down{% if user_response.status == 'not_going' %}-fill{% endif %}"></i>
         </button>
-        <button class="nav-button active">
-            <i class="bi bi-star-fill"></i>
+        <button class="nav-button star-button {% if is_starred %}active{% endif %}">
+            <i class="bi bi-star{% if is_starred %}-fill{% endif %}"></i>
         </button>
-        <button class="nav-button">
-            <i class="bi bi-hand-thumbs-up"></i>
+        <button class="nav-button response-button {% if user_response.status == 'going' %}active{% endif %}" data-response="going">
+            <i class="bi bi-hand-thumbs-up{% if user_response.status == 'going' %}-fill{% endif %}"></i>
         </button>
         <button class="nav-button" {% if next_event %}data-event-id="{{ next_event.id }}"{% endif %}>
             <i class="bi bi-chevron-right"></i>
@@ -369,6 +380,23 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token from cookie since we're using AJAX
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
     // Handle registration button clicks
     const registerButton = document.querySelector('.register-button');
     if (registerButton) {
@@ -397,18 +425,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (icon.classList.contains('bi-star-fill')) {
                 icon.classList.remove('bi-star-fill', 'active');
                 icon.classList.add('bi-star');
-            } else if (icon.classList.contains('bi-hand-thumbs-up')) {
-                icon.classList.remove('bi-hand-thumbs-up');
-                icon.classList.add('bi-hand-thumbs-up-fill', 'active');
-            } else if (icon.classList.contains('bi-hand-thumbs-up-fill')) {
-                icon.classList.remove('bi-hand-thumbs-up-fill', 'active');
-                icon.classList.add('bi-hand-thumbs-up');
-            } else if (icon.classList.contains('bi-hand-thumbs-down')) {
-                icon.classList.remove('bi-hand-thumbs-down');
-                icon.classList.add('bi-hand-thumbs-down-fill', 'active');
-            } else if (icon.classList.contains('bi-hand-thumbs-down-fill')) {
-                icon.classList.remove('bi-hand-thumbs-down-fill', 'active');
-                icon.classList.add('bi-hand-thumbs-down');
             }
         });
     });
@@ -418,18 +434,103 @@ document.addEventListener('DOMContentLoaded', function() {
     navButtons.forEach(button => {
         button.addEventListener('click', function() {
             const eventId = button.dataset.eventId;
+            const response = button.dataset.response;
             
             // If this is a navigation arrow with an event ID
             if (eventId) {
-                window.location.href = `/events/${eventId}/`;
+                window.location.href = "{% url 'events:detail' 0 %}".replace('0', eventId);
                 return;
             }
             
-            // Otherwise, handle the filter buttons (star, thumbs)
-            navButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
+            // If this is a response button
+            if (response) {
+                // Remove active class from both response buttons
+                document.querySelectorAll('.response-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // If clicking an already active button, set status to pending
+                if (button.classList.contains('active')) {
+                    updateEventResponse('pending');
+                    button.classList.remove('active');
+                } else {
+                    // Otherwise, set the new status
+                    updateEventResponse(response);
+                    button.classList.add('active');
+                }
+                return;
+            }
+            
+            // If this is the star button
+            if (button.classList.contains('star-button')) {
+                toggleStarEvent(button);
+                return;
+            }
         });
     });
+
+    function updateEventResponse(status) {
+        fetch("{% url 'events:update_response' event.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            body: `status=${status}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update UI based on response
+                const newStatus = data.response.status;
+                document.querySelectorAll('.response-button').forEach(btn => {
+                    if (btn.dataset.response === newStatus) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            } else {
+                console.error('Error updating response:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    function toggleStarEvent(button) {
+        fetch("{% url 'events:toggle_star' event.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update UI based on response
+                const starIcon = button.querySelector('i');
+                if (data.is_starred) {
+                    button.classList.add('active');
+                    starIcon.classList.remove('bi-star');
+                    starIcon.classList.add('bi-star-fill');
+                } else {
+                    button.classList.remove('active');
+                    starIcon.classList.remove('bi-star-fill');
+                    starIcon.classList.add('bi-star');
+                }
+            } else {
+                console.error('Error updating star status:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
 });
 </script>
 {% endblock %} 

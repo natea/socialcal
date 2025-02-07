@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from .models import Event
+from .models import Event, EventResponse, StarredEvent
 from .forms import EventForm
 from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
 from .scrapers.ical_scraper import ICalScraper
@@ -149,7 +149,35 @@ def event_create(request):
 @login_required
 def event_detail(request, pk):
     event = get_object_or_404(Event, pk=pk, user=request.user)
-    return render(request, 'events/detail.html', {'event': event})
+    
+    # Get previous and next events based on start_time
+    prev_event = Event.objects.filter(
+        user=request.user,
+        start_time__lt=event.start_time
+    ).order_by('-start_time').first()
+    
+    next_event = Event.objects.filter(
+        user=request.user,
+        start_time__gt=event.start_time
+    ).order_by('start_time').first()
+    
+    # Get or create the user's response to this event
+    user_response, _ = EventResponse.objects.get_or_create(
+        user=request.user,
+        event=event,
+        defaults={'status': 'pending'}
+    )
+    
+    # Check if the event is starred by the user
+    is_starred = StarredEvent.objects.filter(user=request.user, event=event).exists()
+    
+    return render(request, 'events/detail.html', {
+        'event': event,
+        'prev_event': prev_event,
+        'next_event': next_event,
+        'user_response': user_response,
+        'is_starred': is_starred
+    })
 
 @login_required
 def event_edit(request, pk):
@@ -880,3 +908,64 @@ def get_day_events(request, date):
         return JsonResponse({'error': f'Invalid date format: {str(e)}'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def update_event_response(request, pk):
+    """Update user's response to an event via AJAX."""
+    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+        
+    event = get_object_or_404(Event, pk=pk, user=request.user)
+    status = request.POST.get('status')
+    
+    if status not in dict(EventResponse.RESPONSE_CHOICES):
+        return JsonResponse({'error': 'Invalid status'}, status=400)
+        
+    response, created = EventResponse.objects.update_or_create(
+        user=request.user,
+        event=event,
+        defaults={'status': status}
+    )
+    
+    return JsonResponse({
+        'status': 'success',
+        'response': {
+            'status': response.status,
+            'updated_at': response.updated_at.isoformat()
+        }
+    })
+
+@login_required
+def toggle_star_event(request, pk):
+    """Toggle star status of an event via AJAX."""
+    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+        
+    event = get_object_or_404(Event, pk=pk, user=request.user)
+    starred_event, created = StarredEvent.objects.get_or_create(
+        user=request.user,
+        event=event
+    )
+    
+    if not created:
+        # If it already existed, then unstar it
+        starred_event.delete()
+        is_starred = False
+    else:
+        is_starred = True
+    
+    return JsonResponse({
+        'status': 'success',
+        'is_starred': is_starred
+    })
+
+@login_required
+def starred_events(request):
+    """Display a list of events that the user has starred."""
+    starred = StarredEvent.objects.filter(user=request.user).select_related('event')
+    events = [star.event for star in starred]
+    
+    return render(request, 'events/starred.html', {
+        'events': events,
+        'active_tab': 'starred'  # For highlighting the active nav item
+    })

@@ -5,6 +5,7 @@ app_name = 'events'
 
 urlpatterns = [
     path('', views.event_list, name='list'),
+    path('starred/', views.starred_events, name='starred'),
     path('create/', views.event_create, name='create'),
     path('<int:pk>/', views.event_detail, name='detail'),
     path('<int:pk>/edit/', views.event_edit, name='edit'),
@@ -17,4 +18,6 @@ urlpatterns = [
     path('week/', views.WeekView.as_view(), name='week'),
     path('week/<int:year>/<int:month>/<int:day>/', views.WeekView.as_view(), name='week_date'),
     path('api/events/<str:date>/', views.get_day_events, name='day_events'),
+    path('<int:pk>/response/', views.update_event_response, name='update_response'),
+    path('<int:pk>/star/', views.toggle_star_event, name='toggle_star'),
 ]
