@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
+from profiles.models import Label
 
 class Event(models.Model):
     user = models.ForeignKey(
@@ -10,6 +11,7 @@ class Event(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    labels = models.ManyToManyField(Label, related_name='events', blank=True)
     
     # Venue Information
     venue_name = models.CharField(max_length=200, blank=True)

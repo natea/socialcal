@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.http import JsonResponse
 from .models import Profile, Label
+from events.models import Event
 from .forms import ProfileForm, LabelForm
 from django.utils import timezone
 
@@ -64,7 +65,7 @@ def profile_detail(request, email):
         'label_form': label_form,
         'label_edit_forms': label_edit_forms,
     }
-    return render(request, 'profiles/detail.html', context)
+    return render(request, 'profiles/profile_detail.html', context)
 
 @login_required
 def profile_edit(request, email):
@@ -148,6 +149,7 @@ def edit_label(request, label_id):
 def delete_label(request, label_id):
     label = get_object_or_404(Label, id=label_id, user=request.user)
     if request.method == 'POST':
+        # The label will automatically be removed from all events due to the ManyToManyField
         label.delete()
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({

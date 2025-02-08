@@ -201,6 +201,11 @@ CACHES = {
 # Debug Toolbar Configuration
 DEBUG_TOOLBAR_CONFIG = {
     'IS_RUNNING_TESTS': True,
+    'SHOW_TOOLBAR_CALLBACK': lambda request: (
+        not request.headers.get('x-requested-with') == 'XMLHttpRequest' and
+        request.META.get('REMOTE_ADDR', None) in ['127.0.0.1', '::1'] and
+        DEBUG
+    ),
 }
 
 DEBUG_TOOLBAR_PANELS = [

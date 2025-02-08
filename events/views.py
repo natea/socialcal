@@ -171,7 +171,7 @@ def event_detail(request, pk):
     # Check if the event is starred by the user
     is_starred = StarredEvent.objects.filter(user=request.user, event=event).exists()
     
-    return render(request, 'events/detail.html', {
+    return render(request, 'events/event_detail.html', {
         'event': event,
         'prev_event': prev_event,
         'next_event': next_event,
