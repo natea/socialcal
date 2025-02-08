@@ -7,6 +7,7 @@ from .models import Profile, Label
 from events.models import Event
 from .forms import ProfileForm, LabelForm
 from django.utils import timezone
+from django.db.utils import IntegrityError
 
 User = get_user_model()
 
@@ -99,21 +100,26 @@ def add_label(request):
     if request.method == 'POST':
         form = LabelForm(request.POST, user=request.user)
         if form.is_valid():
-            label = form.save(commit=False)
-            label.user = request.user
-            label.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Label added successfully',
-                    'label': {
-                        'id': label.id,
-                        'name': label.name,
-                        'color': label.color
-                    }
-                })
-            messages.success(request, 'Label added successfully.')
-            return redirect('profiles:detail', email=request.user.email)
+            try:
+                label = form.save(commit=False)
+                label.user = request.user
+                label.save()
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Label added successfully',
+                        'label': {
+                            'id': label.id,
+                            'name': label.name,
+                            'color': label.color
+                        }
+                    })
+                messages.success(request, 'Label added successfully.')
+                return redirect('profiles:detail', email=request.user.email)
+            except IntegrityError:
+                form.add_error('name', 'You already have a label with this name.')
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'errors': form.errors}, status=400)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:

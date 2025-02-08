@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             form.querySelectorAll('.invalid-feedback').forEach(el => {
                 el.textContent = '';
+                el.style.display = 'none';
             });
             const alertBox = form.querySelector('.alert-danger');
             alertBox.classList.add('d-none');
@@ -89,37 +90,47 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': formData.get('csrfmiddlewaretoken')
                 }
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
+            .then(response => response.json().then(data => ({ status: response.status, data })))
+            .then(({ status, data }) => {
                 if (data.success) {
-                    // Close the modal
+                    // Close the modal and wait for animation
                     const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
                     if (modal) {
                         modal.hide();
+                        // Show success message
+                        if (window.showToast) {
+                            window.showToast(data.message);
+                        }
+                        // Wait for modal hide animation to complete before reloading
+                        form.closest('.modal').addEventListener('hidden.bs.modal', function() {
+                            window.location.reload();
+                        }, { once: true });
+                    } else {
+                        // If no modal, just reload
+                        window.location.reload();
                     }
-                    // Show success message
-                    if (window.showToast) {
-                        window.showToast(data.message);
-                    }
-                    // Reload the page to show the updated label
-                    window.location.reload();
                 } else {
                     // Handle validation errors
                     Object.entries(data.errors).forEach(([field, errors]) => {
                         const input = form.querySelector(`[name="${field}"]`);
                         if (input) {
+                            input.classList.add('is-invalid');
                             const container = input.closest('.mb-3, .mb-4');
                             if (container) {
-                                container.querySelector('.invalid-feedback').textContent = errors.join(' ');
-                                container.classList.add('is-invalid');
+                                const feedback = container.querySelector('.invalid-feedback');
+                                if (feedback) {
+                                    feedback.textContent = errors.join(' ');
+                                    feedback.style.display = 'block';
+                                }
                             }
                         }
                     });
+                    // Show general error message if needed
+                    if (!Object.keys(data.errors).length) {
+                        const alertBox = form.querySelector('.alert-danger');
+                        alertBox.textContent = 'An error occurred while saving the label. Please try again.';
+                        alertBox.classList.remove('d-none');
+                    }
                 }
             })
             .catch(error => {
