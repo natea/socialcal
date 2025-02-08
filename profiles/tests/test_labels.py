@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from profiles.models import Label
 from profiles.forms import LabelForm
+from events.models import Event
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -282,4 +284,86 @@ class TestLabelFeatures:
         )
         assert response.status_code == 400
         assert response.json()['success'] is False
-        assert 'name' in response.json()['errors'] 
+        assert 'name' in response.json()['errors']
+
+    def test_delete_label_with_events(self, client):
+        """Test deleting a label that is associated with events."""
+        user = self.create_test_user()
+        client.force_login(user)
+        
+        # Create label and event
+        label = Label.objects.create(
+            name='Work',
+            color='#FF0000',
+            user=user
+        )
+        event = Event.objects.create(
+            title='Test Event',
+            description='Test Description',
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1),
+            user=user
+        )
+        
+        # Associate label with event
+        event.labels.add(label)
+        
+        # Verify association
+        assert label in event.labels.all()
+        
+        # Delete the label
+        response = client.post(
+            reverse('profiles:delete_label', kwargs={'label_id': label.id})
+        )
+        
+        # Verify redirect
+        assert response.status_code == 302
+        
+        # Verify label is deleted
+        assert not Label.objects.filter(id=label.id).exists()
+        
+        # Verify event still exists and label is removed
+        event.refresh_from_db()
+        assert Event.objects.filter(id=event.id).exists()
+        assert label not in event.labels.all()
+
+    def test_delete_label_with_events_ajax(self, client):
+        """Test deleting a label that is associated with events via AJAX."""
+        user = self.create_test_user()
+        client.force_login(user)
+        
+        # Create label and event
+        label = Label.objects.create(
+            name='Work',
+            color='#FF0000',
+            user=user
+        )
+        event = Event.objects.create(
+            title='Test Event',
+            description='Test Description',
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1),
+            user=user
+        )
+        
+        # Associate label with event
+        event.labels.add(label)
+        
+        # Delete the label via AJAX
+        response = client.post(
+            reverse('profiles:delete_label', kwargs={'label_id': label.id}),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        
+        # Verify response
+        assert response.status_code == 200
+        assert response.json()['success'] is True
+        assert response.json()['message'] == 'Label deleted successfully'
+        
+        # Verify label is deleted
+        assert not Label.objects.filter(id=label.id).exists()
+        
+        # Verify event still exists and label is removed
+        event.refresh_from_db()
+        assert Event.objects.filter(id=event.id).exists()
+        assert label not in event.labels.all() 

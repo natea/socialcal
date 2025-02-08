@@ -13,23 +13,30 @@ from django.utils import timezone
 User = get_user_model()
 
 def welcome(request):
-    if request.user.is_authenticated:
-        if request.user.profile.has_completed_onboarding:
-            return redirect('core:home')
-        return redirect('onboarding:event_types')
+    if request.user.is_authenticated and request.user.profile.has_completed_onboarding:
+        return redirect('calendar:index')
     return render(request, 'onboarding/welcome.html')
 
 @login_required
+def google_oauth(request):
+    """Handle Google OAuth flow"""
+    next_url = reverse('onboarding:event_types')
+    scopes = "openid+email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events"
+    return redirect(f"/accounts/google/login/?process=oauth&scope={scopes}&next={next_url}")
+
+@login_required
+def google_calendar_permissions(request):
+    """Handle Google Calendar permissions"""
+    return render(request, 'onboarding/google_calendar_permissions.html')
+
+@login_required
 def event_types(request):
-    # If user doesn't have a Google account connected, redirect to welcome
+    # Check if user has a Google account connected
     google_account = SocialAccount.objects.filter(
         user=request.user,
         provider='google'
     ).first()
     
-    if not google_account:
-        return redirect('onboarding:welcome')
-
     if request.method == 'POST':
         selected_types = request.POST.getlist('event_types')
         request.user.profile.event_preferences = selected_types
@@ -39,8 +46,12 @@ def event_types(request):
         if request.user.profile.has_google_calendar_access:
             return redirect('onboarding:social_connect')
         return redirect('onboarding:calendar_sync')
-        
-    return render(request, 'onboarding/event_types.html')
+    
+    context = {
+        'has_google_account': bool(google_account),
+        'has_calendar_access': request.user.profile.has_google_calendar_access if google_account else False
+    }
+    return render(request, 'onboarding/event_types.html', context)
 
 @login_required
 def calendar_sync(request):
@@ -50,11 +61,12 @@ def calendar_sync(request):
         provider='google'
     ).first()
     
-    if google_account and request.user.profile.has_google_calendar_access:
-        # If already connected with calendar scope, redirect to next step
-        return redirect('onboarding:social_connect')
-        
-    return render(request, 'onboarding/calendar_sync.html')
+    has_calendar_access = request.user.profile.has_google_calendar_access if google_account else False
+    
+    context = {
+        'has_calendar_access': has_calendar_access
+    }
+    return render(request, 'onboarding/calendar_sync.html', context)
 
 @login_required
 def social_connect(request):

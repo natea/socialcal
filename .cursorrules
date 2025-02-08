@@ -29,7 +29,8 @@
   - Celery (for background tasks)
   - Redis (for caching and task queues)
   - PostgreSQL or MySQL (preferred databases for production)
-
+  - After pip installing a package, add it to the requirements.txt file.
+  
   Django-Specific Guidelines
   - Always activate the virtual environment before running any commands.
   - Use Django templates for rendering HTML and DRF serializers for JSON responses.
@@ -62,6 +63,7 @@ Testing
 - After refactoring code, write a test for it.
 - After writing a test, run it with pytest.
 - After making changes to the code, run the tests with pytest.
+- When making a tests directory, put a __init__.py file in it.
 - Use pytest for testing
 - Use pytest-django for testing Django applications
 - Use pytest-cov for coverage reporting

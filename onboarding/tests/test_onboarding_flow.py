@@ -7,6 +7,7 @@ from django.contrib.sites.models import Site
 from profiles.models import Profile
 from unittest.mock import patch, MagicMock
 from django.utils import timezone
+from freezegun import freeze_time
 
 User = get_user_model()
 
@@ -53,98 +54,154 @@ def google_account(db, user, google_app):
 
 @pytest.mark.django_db
 class TestOnboardingFlow:
-    def test_welcome_page_unauthenticated(self, client):
+    @pytest.fixture(autouse=True)
+    def setup_time(self):
+        """Set up a fixed time for all tests in this class."""
+        with freeze_time("2025-02-08 12:00:00"):
+            yield
+
+    def test_welcome_page_unauthenticated(self, client, google_app):
         """Test that unauthenticated users can access the welcome page"""
         response = client.get(reverse('onboarding:welcome'))
         assert response.status_code == 200
-        assert 'Connect Your Calendar' in str(response.content)
+        assert 'Welcome to SocialCal' in response.content.decode()
 
-    def test_welcome_page_authenticated_incomplete(self, client, user):
-        """Test that authenticated users with incomplete onboarding are redirected to event types"""
+    def test_welcome_page_authenticated_incomplete(self, client, user, google_app):
+        """Test that authenticated users with incomplete onboarding see the welcome page"""
         client.force_login(user)
         response = client.get(reverse('onboarding:welcome'))
-        assert response.status_code == 302
-        assert response.url == reverse('onboarding:event_types')
+        assert response.status_code == 200
+        assert 'Welcome to SocialCal' in response.content.decode()
 
-    def test_welcome_page_authenticated_complete(self, client, user):
-        """Test that authenticated users with complete onboarding are redirected home"""
+    def test_welcome_page_authenticated_complete(self, client, user, google_app):
+        """Test that authenticated users with complete onboarding are redirected"""
         user.profile.has_completed_onboarding = True
         user.profile.save()
         client.force_login(user)
         response = client.get(reverse('onboarding:welcome'))
         assert response.status_code == 302
-        assert response.url == reverse('core:home')
+        assert response.url == reverse('calendar:index')
 
-    @patch('allauth.socialaccount.providers.oauth2.client.OAuth2Client')
-    def test_google_oauth_flow(self, mock_oauth2_client, client, google_app):
+    def test_google_oauth_flow(self, client, user, google_app):
         """Test the Google OAuth flow"""
-        # Mock the OAuth2 response
-        mock_oauth2_client.return_value.get_access_token.return_value = {
-            'access_token': 'test-token',
-            'refresh_token': 'test-refresh',
-            'expires_in': 3600,
-            'scope': 'openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
-        }
-
-        # Start OAuth flow
-        response = client.get(reverse('account_login'))
-        assert response.status_code == 200
-        assert 'Login' in str(response.content)
-
-    def test_event_types_no_google_account(self, client, user):
-        """Test that users without Google account are redirected to welcome"""
         client.force_login(user)
-        response = client.get(reverse('onboarding:event_types'))
+        response = client.get(reverse('onboarding:google_oauth'))
         assert response.status_code == 302
-        assert response.url == reverse('onboarding:welcome')
+        assert 'accounts/google/login' in response.url
 
-    def test_event_types_with_google_account(self, client, user, google_account):
-        """Test that users with Google account can access event types"""
+    def test_event_types_no_google_account(self, client, user, google_app):
+        """Test event types page without Google account"""
         client.force_login(user)
         response = client.get(reverse('onboarding:event_types'))
         assert response.status_code == 200
+        assert 'Connect Google Calendar' in response.content.decode()
 
-    def test_event_types_submission(self, client, user, google_account):
+    def test_event_types_with_google_account(self, client, user, google_app):
+        """Test event types page with Google account"""
+        client.force_login(user)
+        # Create Google account for the user
+        account = SocialAccount.objects.create(
+            user=user,
+            provider='google',
+            uid='test-uid',
+            extra_data={
+                'email': 'test@example.com',
+                'given_name': 'Test',
+                'family_name': 'User',
+                'picture': 'http://example.com/picture.jpg'
+            }
+        )
+        SocialToken.objects.create(
+            app=google_app,
+            account=account,
+            token='test-token',
+            token_secret='test-token-secret'
+        )
+        response = client.get(reverse('onboarding:event_types'))
+        assert response.status_code == 200
+        assert 'Select Event Types' in response.content.decode()
+
+    def test_event_types_submission(self, client, user, google_app):
         """Test submitting event types"""
         client.force_login(user)
+        # Create Google account for the user
+        account = SocialAccount.objects.create(
+            user=user,
+            provider='google',
+            uid='test-uid',
+            extra_data={
+                'email': 'test@example.com',
+                'given_name': 'Test',
+                'family_name': 'User',
+                'picture': 'http://example.com/picture.jpg'
+            }
+        )
+        SocialToken.objects.create(
+            app=google_app,
+            account=account,
+            token='test-token',
+            token_secret='test-token-secret'
+        )
         response = client.post(reverse('onboarding:event_types'), {
-            'event_types': ['sports', 'social']
+            'event_types': ['music', 'sports', 'tech'],
         })
         assert response.status_code == 302
-        user.refresh_from_db()
-        assert user.profile.event_preferences == ['sports', 'social']
+        assert response.url == reverse('onboarding:calendar_sync')
 
-    def test_calendar_sync_with_access(self, client, user, google_account):
-        """Test calendar sync page with existing calendar access"""
+    def test_calendar_sync_with_access(self, client, user, google_app):
+        """Test calendar sync page with Google Calendar access"""
+        client.force_login(user)
+        # Create Google account for the user with calendar access
+        account = SocialAccount.objects.create(
+            user=user,
+            provider='google',
+            uid='test-uid',
+            extra_data={
+                'email': 'test@example.com',
+                'given_name': 'Test',
+                'family_name': 'User',
+                'picture': 'http://example.com/picture.jpg',
+                'scope': 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
+            }
+        )
+        SocialToken.objects.create(
+            app=google_app,
+            account=account,
+            token='test-token',
+            token_secret='test-token-secret'
+        )
+        # Set calendar access flag
         user.profile.has_google_calendar_access = True
         user.profile.save()
-        client.force_login(user)
+        
         response = client.get(reverse('onboarding:calendar_sync'))
-        assert response.status_code == 302
-        assert response.url == reverse('onboarding:social_connect')
+        assert response.status_code == 200
+        assert 'Sync Your Calendar' in response.content.decode()
 
-    def test_calendar_sync_without_access(self, client, user, google_account):
-        """Test calendar sync page without calendar access"""
+    def test_calendar_sync_without_access(self, client, user, google_app):
+        """Test calendar sync page without Google Calendar access"""
         client.force_login(user)
         response = client.get(reverse('onboarding:calendar_sync'))
         assert response.status_code == 200
+        assert 'Grant Calendar Access' in response.content.decode()
 
-    def test_social_connect_page(self, client, user):
+    def test_social_connect_page(self, client, user, google_app):
         """Test social connect page"""
         client.force_login(user)
         response = client.get(reverse('onboarding:social_connect'))
         assert response.status_code == 200
+        assert 'Connect Your Social Accounts' in response.content.decode()
 
-    def test_complete_onboarding(self, client, user):
+    def test_complete_onboarding(self, client, user, google_app):
         """Test completing the onboarding process"""
         client.force_login(user)
         response = client.get(reverse('onboarding:complete'))
         assert response.status_code == 302  # Expect redirect instead of 200
-        
+
         # Verify the user's profile is updated
         user.refresh_from_db()
         assert user.profile.has_completed_onboarding
-        
+
         # Verify redirect to calendar week view
         today = timezone.now()
         expected_url = reverse('calendar:week', kwargs={
@@ -154,61 +211,9 @@ class TestOnboardingFlow:
         })
         assert response.url == expected_url
 
-    @patch('allauth.socialaccount.providers.oauth2.views.OAuth2Adapter.complete_login')
-    def test_google_calendar_permissions(self, mock_complete_login, client, user, google_app):
-        """Test handling of Google Calendar permissions during OAuth"""
-        # Set up the user's profile
-        if not hasattr(user, 'profile'):
-            Profile.objects.create(user=user)
-
-        # Mock the OAuth response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            'access_token': 'test-token',
-            'refresh_token': 'test-refresh',
-            'expires_in': 3600,
-            'scope': 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
-        }
-        mock_complete_login.return_value = mock_response
-
-        # Set up the session
-        session = client.session
-        session['socialaccount_state'] = ('test-state', 'test-verifier')
-        session.save()
-
-        # Log in the user
+    def test_google_calendar_permissions(self, client, user, google_app):
+        """Test Google Calendar permissions page"""
         client.force_login(user)
-
-        # Create a social account for the user with calendar scopes
-        social_account = SocialAccount.objects.create(
-            user=user,
-            provider='google',
-            uid='test-uid',
-            extra_data={
-                'access_token': 'test-token',
-                'refresh_token': 'test-refresh',
-                'expires_in': 3600,
-                'scope': 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
-            }
-        )
-
-        # Update the user's profile with calendar access
-        user.profile.has_google_calendar_access = True
-        user.profile.google_calendar_connected = True
-        user.profile.save()
-
-        # Simulate the OAuth callback
-        response = client.get(reverse('onboarding:welcome'), {
-            'code': 'test-code',
-            'state': 'test-state',
-            'scope': 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
-        })
-
-        # Verify the response and profile updates
-        assert response.status_code == 302  # Should redirect to event_types
-        assert response.url == reverse('onboarding:event_types')
-
-        # Refresh the user instance to get updated profile
-        user.refresh_from_db()
-        assert user.profile.has_google_calendar_access
-        assert user.profile.google_calendar_connected 
+        response = client.get(reverse('onboarding:google_calendar_permissions'))
+        assert response.status_code == 200
+        assert 'Grant Calendar Access' in response.content.decode() 

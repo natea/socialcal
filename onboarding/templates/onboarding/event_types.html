@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="onboarding-icon">
+        <i class="bi bi-tags"></i>
+    </div>
+    {% if not has_google_account %}
+    <h1 class="onboarding-title">Connect Google Calendar</h1>
+    <p class="onboarding-text">Please connect your Google account first to continue.</p>
+    <a href="{% url 'onboarding:google_oauth' %}" class="google-button">
+        <img src="{% static 'images/google-icon.svg' %}" alt="Google" class="google-icon" width="20">
+        Connect with Google
+    </a>
+    {% else %}
+    <h1 class="onboarding-title">Select Event Types</h1>
+    <p class="onboarding-text">Select the types of events you're interested in:</p>
+    
+    <form method="post" class="event-types-form">
+        {% csrf_token %}
+        <div class="event-type-options">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="music" name="event_types" value="music">
+                <label class="form-check-label" for="music">Music Events</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="sports" name="event_types" value="sports">
+                <label class="form-check-label" for="sports">Sports Events</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="tech" name="event_types" value="tech">
+                <label class="form-check-label" for="tech">Tech Events</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="food" name="event_types" value="food">
+                <label class="form-check-label" for="food">Food & Drink Events</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="arts" name="event_types" value="arts">
+                <label class="form-check-label" for="arts">Arts & Culture</label>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary mt-4">Continue</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.event-types-form {
+    text-align: left;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.event-type-options {
+    margin: 2rem 0;
+}
+
+.form-check {
+    margin-bottom: 1rem;
+}
+
+.form-check-label {
+    color: #444;
+}
+</style>
+{% endblock %} 

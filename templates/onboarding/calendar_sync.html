@@ -80,13 +80,23 @@ body {
     <div class="onboarding-icon">
         <i class="bi bi-calendar"></i>
     </div>
-    <h1 class="onboarding-title">Connect Your Calendar</h1>
-    <p class="onboarding-text">Sync your Google Calendar to never miss an event!</p>
+    {% if has_calendar_access %}
+    <h1 class="onboarding-title">Sync Your Calendar</h1>
+    <p class="onboarding-text">Your calendar is ready to sync!</p>
+    
+    <a href="{% url 'onboarding:social_connect' %}" class="google-button">
+        <i class="bi bi-check-circle"></i>
+        Continue to Next Step
+    </a>
+    {% else %}
+    <h1 class="onboarding-title">Grant Calendar Access</h1>
+    <p class="onboarding-text">Allow SocialCal to access your calendar to sync events.</p>
     
     <a href="{% provider_login_url 'google' process='connect' scope='calendar' next='/onboarding/social-connect/' %}" class="google-button">
         <img src="{% static 'images/google-icon.svg' %}" alt="Google" class="google-icon" width="20">
         Connect with Google Calendar
     </a>
+    {% endif %}
     
     <a href="{% url 'onboarding:social_connect' %}" class="skip-link">Skip for now</a>
 </div>

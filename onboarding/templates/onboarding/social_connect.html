@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="onboarding-icon">
+        <i class="bi bi-people"></i>
+    </div>
+    <h1 class="onboarding-title">Connect Your Social Accounts</h1>
+    <p class="onboarding-text">Connect with friends and find events you'll love!</p>
+    
+    <div class="social-buttons">
+        {% for provider in social_apps %}
+            {% if provider != 'google' %}
+                <a href="{% url 'socialaccount_connections' %}?process=connect&provider={{ provider }}&next={% url 'onboarding:complete' %}" class="social-button">
+                    <img src="{% static 'images/'|add:provider|add:'-icon.svg' %}" alt="{{ provider|title }}" class="social-icon" width="20">
+                    Connect {{ provider|title }}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    
+    <a href="{% url 'onboarding:complete' %}" class="skip-link">Skip for now</a>
+</div>
+{% endblock %} 

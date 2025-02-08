@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from events.models import Event
 from unittest.mock import patch, AsyncMock, MagicMock
 import pytz
@@ -665,7 +665,7 @@ class TestEventViews:
         assert 'X-Webcal-URL' in response
         assert response['X-Webcal-URL'].startswith('webcal://')
 
-    @pytest.mark.django_db(transaction=True)
+    @override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
     def test_webcal_javascript_functionality(self, authenticated_client, user):
         # Create a test event
         event = Event.objects.create(
@@ -681,7 +681,6 @@ class TestEventViews:
         response = authenticated_client.get(reverse('events:detail', args=[event.id]))
         content = response.content.decode()
         
-        # Check that the JavaScript for handling webcal links is included
-        assert 'document.querySelectorAll(\'a[data-protocol="webcal"]\')' in content
-        assert 'const url = new URL(link.href);' in content
-        assert 'link.href = \'webcal://\' + url.host + url.pathname + url.search + url.hash;' in content
+        # Check that the webcal link is present with the correct data attribute
+        assert 'data-protocol="webcal"' in content
+        assert 'webcal-handler.js' in content
