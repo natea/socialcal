@@ -18,9 +18,21 @@ TESTING = 'test' in sys.argv
 
 SECRET_KEY = 'django-insecure-replace-with-your-secret-key'
 
-DEBUG = True
+# Set DEBUG based on environment variable, default to True for development
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+# Configure allowed hosts based on environment
+if DEBUG and not os.environ.get('RENDER', False):
+    # Local development
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+else:
+    # Production environment
+    ALLOWED_HOSTS = ['socialcal.io', 'www.socialcal.io', 'socialcal.onrender.com']
+    
+    # Add any additional domains from environment variable if set
+    additional_hosts = os.environ.get('ADDITIONAL_ALLOWED_HOSTS', '')
+    if additional_hosts:
+        ALLOWED_HOSTS.extend(additional_hosts.split(','))
 
 # Modify installed apps based on whether we're testing
 INSTALLED_APPS = [
