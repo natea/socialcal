@@ -16,27 +16,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Determine if we're running tests
 TESTING = 'test' in sys.argv
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGOSECRET_KEY', 'django-insecure-replace-with-your-secret-key')
+SECRET_KEY = 'django-insecure-replace-with-your-secret-key'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# Set DEBUG to False when running on Render
-DEBUG = 'RENDER' not in os.environ
+# Set DEBUG based on environment variable, default to True for development
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-# Configure allowed hosts
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# Always include critical production domains in ALLOWED_HOSTS
+ALLOWED_HOSTS = ['socialcal.io', 'www.socialcal.io', 'socialcal.onrender.com']
 
-# Add the Render external hostname to allowed hosts
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-
-
-
+# Add development hosts if in debug mode
+if DEBUG:
+    ALLOWED_HOSTS += ['localhost', '127.0.0.1']
+    
 # Add any additional domains from environment variable if set
 additional_hosts = os.environ.get('ADDITIONAL_ALLOWED_HOSTS', '')
 if additional_hosts:
     ALLOWED_HOSTS.extend(additional_hosts.split(','))
+
+# Print ALLOWED_HOSTS to logs for debugging
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print(f"DEBUG: {DEBUG}")
 
 # Modify installed apps based on whether we're testing
 INSTALLED_APPS = [
