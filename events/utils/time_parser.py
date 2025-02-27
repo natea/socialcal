@@ -52,18 +52,30 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
                     test_date = datetime.strptime(f"{date_str}, {current_year}", "%B %d, %Y")
                 
                 # Get current date for comparison
-                current_date = datetime.now()
+                current_date = datetime.now()  # Get current date again to ensure consistency
                 
-                # If the date is in the past and more than a few days ago, use next year
-                days_ago = (current_date - test_date).days
-                if days_ago > 7:  # If more than a week in the past
-                    current_year += 1
-                    logger.info(f"Date would be in the past, using next year: {current_year}")
-                    # Reparse with new year
-                    if '/' in date_str:
-                        test_date = datetime(current_year, month, day)
-                    else:
-                        test_date = datetime.strptime(f"{date_str}, {current_year}", "%B %d, %Y")
+                # Check if it's today's date first
+                if test_date.month == current_date.month and test_date.day == current_date.day:
+                    # It's today's date, use current year
+                    logger.info("Using current year for today's date")
+                # If the date is in a past month or more than 7 days ago in the current month,
+                # use next year unless it's December looking at January
+                elif test_date.month < current_date.month:
+                    # Past month this year
+                    if not (test_date.month == 1 and current_date.month == 12):
+                        current_year += 1
+                        logger.info(f"Date is in a past month, using next year: {current_year}")
+                elif test_date.month == current_date.month:
+                    # Current month - use next year if more than 7 days ago
+                    if test_date.day < current_date.day - 7:
+                        current_year += 1
+                        logger.info(f"Date is more than a week in the past, using next year: {current_year}")
+                
+                # Reparse with the determined year
+                if '/' in date_str:
+                    test_date = datetime(current_year, month, day)
+                else:
+                    test_date = datetime.strptime(f"{date_str}, {current_year}", "%B %d, %Y")
                 
                 date_obj = test_date
             except ValueError as e:

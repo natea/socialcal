@@ -92,18 +92,44 @@ if not OPENAI_API_KEY:
     logger.warning('OPENAI_API_KEY environment variable is not set. Event extraction will use basic mode.')
 
 # Redis Cache Configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
-            'RETRY_ON_TIMEOUT': True,
+try:
+    import django_redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'RETRY_ON_TIMEOUT': True,
+                'IGNORE_EXCEPTIONS': True,  # Don't crash if Redis is unavailable
+            }
         }
     }
-}
+    logger = logging.getLogger(__name__)
+    logger.info("Using Redis cache backend")
+except ImportError:
+    # Fallback to LocMemCache if django_redis is not available
+    logger = logging.getLogger(__name__)
+    logger.warning("django_redis not available, using LocMemCache instead")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Fallback to LocMemCache if Redis is explicitly disabled
+if os.environ.get('DISABLE_REDIS_CACHE', 'false').lower() == 'true':
+    logger = logging.getLogger(__name__)
+    logger.warning("Redis cache disabled by environment variable, using LocMemCache")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
 
 # Session configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'

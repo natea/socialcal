@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% load static %}
+{% load profile_tags %}
+
+{% block title %}{{ profile.get_full_name }}'s Profile{% endblock %}
+
+{% block content %}
+<style>
+.bg-purple {
+    background-color: #6f42c1;
+}
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+}
+</style>
+
+<div class="container">
+    {# Toast Container for Notifications #}
+    <div class="toast-container"></div>
+
+    <h1 class="mb-4">Profile</h1>
+    
+    <div class="row">
+        {# User Info Section #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        {% if profile.avatar %}
+                            <img src="{{ profile.avatar.url }}" alt="{{ profile.get_full_name }}" class="rounded-circle me-3" style="width: 64px; height: 64px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded-circle bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                <i class="bi bi-person text-white" style="font-size: 2rem;"></i>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <h2 class="h4 mb-0">{{ profile.get_full_name }}</h2>
+                            <p class="text-muted mb-0">{{ profile.user.email }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <p class="mb-1"><strong>Events This Week:</strong> {{ events_this_week|length }}</p>
+                        <p class="mb-0"><strong>Groups Created:</strong> {{ user.groups.count }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Connected Accounts Section #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Connected Accounts</h3>
+                    <div class="list-group">
+                        <div class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-google me-2"></i>
+                            <span>Google Calendar</span>
+                            {% if 'google' in social_accounts %}
+                                <span class="badge bg-success ms-auto">Connected</span>
+                            {% else %}
+                                <a href="{% url 'socialaccount_connections' %}" class="btn btn-sm btn-outline-primary ms-auto">Connect</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Event Preferences Section #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Event Preferences</h3>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for pref in profile.event_preferences %}
+                            <span class="badge bg-primary">{{ pref }}</span>
+                        {% empty %}
+                            <p class="text-muted mb-0">No preferences set</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Manage Labels Section #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h5 mb-0">Manage Labels</h3>
+                        {% if user == profile.user %}
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addLabelModal">
+                                <i class="bi bi-plus-lg me-1"></i>
+                                Add New Label
+                            </button>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="list-group">
+                        {% for label in profile.user.labels.all %}
+                            <div class="list-group-item d-flex align-items-center bg-light">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle me-2" style="width: 12px; height: 12px; background-color: {{ label.color }};"></div>
+                                    <span>{{ label.name }}</span>
+                                </div>
+                                {% if user == profile.user %}
+                                    <div class="ms-auto">
+                                        <button class="btn btn-sm btn-link" data-bs-toggle="modal" data-bs-target="#editLabelModal{{ label.id }}">Edit</button>
+                                        <button class="btn btn-sm btn-link text-danger" data-bs-toggle="modal" data-bs-target="#deleteLabelModal{{ label.id }}">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% empty %}
+                            <p class="text-muted mb-0">No labels created yet</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user == profile.user %}
+    {# Add Label Modal #}
+    <div class="modal fade" id="addLabelModal" tabindex="-1" aria-labelledby="addLabelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            {% include "profiles/label_form.html" with form=label_form %}
+        </div>
+    </div>
+
+    {# Edit and Delete Label Modals #}
+    {% for label in profile.user.labels.all %}
+        <div class="modal fade" id="editLabelModal{{ label.id }}" tabindex="-1" aria-labelledby="editLabelModal{{ label.id }}Label" aria-hidden="true">
+            <div class="modal-dialog">
+                {% include "profiles/label_form.html" with form=label_edit_forms|get_item:label.id label=label %}
+            </div>
+        </div>
+
+        <div class="modal fade" id="deleteLabelModal{{ label.id }}" tabindex="-1" aria-labelledby="deleteLabelModal{{ label.id }}Label" aria-hidden="true">
+            <div class="modal-dialog">
+                {% include "profiles/delete_label.html" with label=label %}
+            </div>
+        </div>
+    {% endfor %}
+{% endif %}
+
+{% block extra_js %}
+<script>
+function showToast(message, type = 'success') {
+    const toastContainer = document.querySelector('.toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, {
+        animation: true,
+        autohide: true,
+        delay: 3000
+    });
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+// Make showToast available globally
+window.showToast = showToast;
+
+// Add event listener for successful form submissions
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.label-form, .delete-label-form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (form.dataset.ajax) {
+                e.preventDefault();
+                const formData = new FormData(form);
+                
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        showToast(data.message);
+                        window.location.reload();
+                    } else {
+                        // Handle validation errors
+                        Object.entries(data.errors).forEach(([field, errors]) => {
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (input) {
+                                const container = input.closest('.mb-3, .mb-4');
+                                if (container) {
+                                    container.querySelector('.invalid-feedback').textContent = errors.join(' ');
+                                    container.classList.add('is-invalid');
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('An error occurred. Please try again.', 'danger');
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

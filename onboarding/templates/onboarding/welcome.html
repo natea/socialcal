@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="onboarding-icon">
+        <i class="bi bi-calendar-event"></i>
+    </div>
+    <h1 class="onboarding-title">Welcome to SocialCal</h1>
+    <p class="onboarding-text">Connect your Google Calendar to get started!</p>
+    
+    <a href="{% url 'socialaccount_connections' %}?process=oauth&scope=openid+email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events&next={% url 'onboarding:event_types' %}" class="google-button">
+        <img src="{% static 'images/google-icon.svg' %}" alt="Google" class="google-icon" width="20">
+        Continue with Google
+    </a>
+</div>
+{% endblock %} 

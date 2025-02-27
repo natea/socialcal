@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
+from profiles.models import Label
 
 class Event(models.Model):
     user = models.ForeignKey(
@@ -10,6 +11,7 @@ class Event(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    labels = models.ManyToManyField(Label, related_name='events', blank=True)
     
     # Venue Information
     venue_name = models.CharField(max_length=200, blank=True)
@@ -66,3 +68,55 @@ class Event(models.Model):
     def get_full_address(self):
         """Return the full address as a string."""
         return self.location
+
+class EventResponse(models.Model):
+    RESPONSE_CHOICES = [
+        ('going', 'Going'),
+        ('not_going', 'Not Going'),
+        ('pending', 'Pending'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='event_responses'
+    )
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name='responses'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=RESPONSE_CHOICES,
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'event']
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"{self.user.username}'s response to {self.event.title}: {self.status}"
+
+class StarredEvent(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='starred_events'
+    )
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name='starred_by'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'event']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} starred {self.event.title}"

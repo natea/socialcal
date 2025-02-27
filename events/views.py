@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from .models import Event
+from .models import Event, EventResponse, StarredEvent
 from .forms import EventForm
 from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
 from .scrapers.ical_scraper import ICalScraper
@@ -24,6 +24,8 @@ from django.urls import reverse
 import re
 from django.db import models
 from django.utils import timezone
+from datetime import datetime, timedelta
+from django.views.generic import TemplateView
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -72,11 +74,18 @@ scraping_locks = {}
 def get_job_status(job_id):
     """Get job status from Redis cache"""
     status = cache.get(f'scraping_job_{job_id}')
-    return pickle.loads(status) if status else None
+    if not status:
+        return None
+    if isinstance(status, str):
+        try:
+            return json.loads(status)
+        except json.JSONDecodeError:
+            return None
+    return status
 
 def set_job_status(job_id, status):
     """Set job status in Redis cache"""
-    cache.set(f'scraping_job_{job_id}', pickle.dumps(status), timeout=3600)  # 1 hour timeout
+    cache.set(f'scraping_job_{job_id}', json.dumps(status), timeout=3600)  # 1 hour timeout
 
 @login_required
 def event_list(request):
@@ -140,7 +149,35 @@ def event_create(request):
 @login_required
 def event_detail(request, pk):
     event = get_object_or_404(Event, pk=pk, user=request.user)
-    return render(request, 'events/detail.html', {'event': event})
+    
+    # Get previous and next events based on start_time
+    prev_event = Event.objects.filter(
+        user=request.user,
+        start_time__lt=event.start_time
+    ).order_by('-start_time').first()
+    
+    next_event = Event.objects.filter(
+        user=request.user,
+        start_time__gt=event.start_time
+    ).order_by('start_time').first()
+    
+    # Get or create the user's response to this event
+    user_response, _ = EventResponse.objects.get_or_create(
+        user=request.user,
+        event=event,
+        defaults={'status': 'pending'}
+    )
+    
+    # Check if the event is starred by the user
+    is_starred = StarredEvent.objects.filter(user=request.user, event=event).exists()
+    
+    return render(request, 'events/event_detail.html', {
+        'event': event,
+        'prev_event': prev_event,
+        'next_event': next_event,
+        'user_response': user_response,
+        'is_starred': is_starred
+    })
 
 @login_required
 def event_edit(request, pk):
@@ -798,3 +835,137 @@ def export_ical(request, events=None):
     response['X-Webcal-URL'] = webcal_url
     
     return response
+
+class WeekView(TemplateView):
+    template_name = 'calendar_app/week.html'
+
+    def get_week_dates(self, base_date):
+        # Find the start of the week (Monday)
+        start = base_date - timedelta(days=base_date.weekday())
+        dates = []
+        for i in range(7):
+            current_date = start + timedelta(days=i)
+            dates.append({
+                'date': current_date,
+                'today': current_date.date() == timezone.now().date()
+            })
+        return dates
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get the date from URL parameters or use today
+        year = self.kwargs.get('year', timezone.now().year)
+        month = self.kwargs.get('month', timezone.now().month)
+        day = self.kwargs.get('day', timezone.now().day)
+        
+        try:
+            current_date = timezone.make_aware(datetime(year, month, day))
+        except ValueError:
+            current_date = timezone.now()
+        
+        # Get week dates
+        week_dates = self.get_week_dates(current_date)
+        
+        # Get events for the selected date
+        events = Event.objects.filter(
+            start_time__date=current_date.date()
+        ).order_by('start_time')
+        
+        context.update({
+            'week_dates': week_dates,
+            'week_start': week_dates[0]['date'],
+            'selected_date': current_date,
+            'month_year': current_date.strftime('%B %Y'),
+            'events': events,
+            'timezone': self.request.user.timezone if hasattr(self.request.user, 'timezone') else 'UTC'
+        })
+        return context
+
+@login_required
+def get_day_events(request, date):
+    """API endpoint to get events for a specific day"""
+    try:
+        date_obj = datetime.strptime(date, '%Y-%m-%d')
+        date_obj = timezone.make_aware(date_obj)
+        
+        # Filter events for the current user
+        events = Event.objects.filter(
+            user=request.user,
+            start_time__date=date_obj.date()
+        ).order_by('start_time')
+        
+        events_data = [{
+            'id': event.id,
+            'title': event.title,
+            'start_time': event.start_time.isoformat(),
+            'end_time': event.end_time.isoformat() if event.end_time else None,
+            'location': event.get_full_address() if hasattr(event, 'get_full_address') else event.location
+        } for event in events]
+        
+        return JsonResponse({'events': events_data})
+    except ValueError as e:
+        return JsonResponse({'error': f'Invalid date format: {str(e)}'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def update_event_response(request, pk):
+    """Update user's response to an event via AJAX."""
+    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+        
+    event = get_object_or_404(Event, pk=pk, user=request.user)
+    status = request.POST.get('status')
+    
+    if status not in dict(EventResponse.RESPONSE_CHOICES):
+        return JsonResponse({'error': 'Invalid status'}, status=400)
+        
+    response, created = EventResponse.objects.update_or_create(
+        user=request.user,
+        event=event,
+        defaults={'status': status}
+    )
+    
+    return JsonResponse({
+        'status': 'success',
+        'response': {
+            'status': response.status,
+            'updated_at': response.updated_at.isoformat()
+        }
+    })
+
+@login_required
+def toggle_star_event(request, pk):
+    """Toggle star status of an event via AJAX."""
+    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+        
+    event = get_object_or_404(Event, pk=pk, user=request.user)
+    starred_event, created = StarredEvent.objects.get_or_create(
+        user=request.user,
+        event=event
+    )
+    
+    if not created:
+        # If it already existed, then unstar it
+        starred_event.delete()
+        is_starred = False
+    else:
+        is_starred = True
+    
+    return JsonResponse({
+        'status': 'success',
+        'is_starred': is_starred
+    })
+
+@login_required
+def starred_events(request):
+    """Display a list of events that the user has starred."""
+    starred = StarredEvent.objects.filter(user=request.user).select_related('event')
+    events = [star.event for star in starred]
+    
+    return render(request, 'events/starred.html', {
+        'events': events,
+        'active_tab': 'starred'  # For highlighting the active nav item
+    })

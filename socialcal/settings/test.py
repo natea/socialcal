@@ -1,10 +1,87 @@
 from .base import *
 
-# Use an in-memory SQLite database for testing
+# Use a faster password hasher for tests
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.MD5PasswordHasher',
+]
+
+# Use an in-memory database for faster tests
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
+    }
+}
+
+# Disable debug mode
+DEBUG = False
+
+# Disable CSRF for testing
+MIDDLEWARE = [m for m in MIDDLEWARE if 'csrf' not in m.lower()]
+
+# Configure email backend for testing
+EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+
+# Configure cache for testing
+import logging
+logger = logging.getLogger(__name__)
+
+try:
+    import django_redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': 'redis://127.0.0.1:6379/1',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'RETRY_ON_TIMEOUT': True,
+                'IGNORE_EXCEPTIONS': True,  # Don't crash if Redis is unavailable
+            }
+        }
+    }
+    logger.info("Using Redis cache backend for tests")
+except ImportError:
+    # Fallback to LocMemCache if django_redis is not available
+    logger.warning("django_redis not available, using LocMemCache for tests")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Fallback to LocMemCache if Redis is explicitly disabled
+if os.environ.get('DISABLE_REDIS_CACHE', 'false').lower() == 'true':
+    logger.warning("Redis cache disabled by environment variable, using LocMemCache for tests")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Configure media storage for testing
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.InMemoryStorage'
+
+# Disable SSL redirect for testing
+SECURE_SSL_REDIRECT = False
+
+# Configure allauth for testing
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': 'test-client-id',
+            'secret': 'test-secret',
+            'key': ''
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/calendar.events'
+        ],
     }
 }
 
@@ -64,13 +141,9 @@ OPENAI_API_KEY = 'test_key'
 FIRECRAWL_API_KEY = 'test_key'
 GROQ_API_KEY = 'test_key'
 
-# Redis Cache Configuration for Testing
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/2',  # Using DB 2 for testing
-    }
-}
+# Spotify API credentials for testing
+SPOTIFY_CLIENT_ID = 'test_client_id'
+SPOTIFY_CLIENT_SECRET = 'test_client_secret'
 
 # Test venue mapping
 EVENT_VENUE_MAPPING = {

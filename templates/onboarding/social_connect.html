@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+{% load socialaccount %}
+
+{% block extra_css %}
+<style>
+.onboarding-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.onboarding-icon {
+    color: #8A2BE2;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.onboarding-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.onboarding-text {
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.social-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.social-button {
+    background: white;
+    color: #444;
+    border: 1px solid #ddd;
+    padding: 0.8rem 2rem;
+    border-radius: 5px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+.social-button:hover {
+    background: #f5f5f5;
+    text-decoration: none;
+    color: #444;
+}
+
+.social-icon {
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.skip-link {
+    color: #666;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.skip-link:hover {
+    color: #8A2BE2;
+    text-decoration: none;
+}
+
+body {
+    background-color: #F8F0FF;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="onboarding-icon">
+        <i class="bi bi-star"></i>
+    </div>
+    <h1 class="onboarding-title">Connect Your Social Accounts</h1>
+    <p class="onboarding-text">Find and connect with your friends on SoCal!</p>
+    
+    <div class="social-buttons">
+        {% if 'facebook' in social_apps %}
+        <a href="{% provider_login_url 'facebook' process='connect' next='/onboarding/complete/' %}" class="social-button">
+            <i class="bi bi-facebook social-icon"></i>
+            Connect with Facebook
+        </a>
+        {% endif %}
+        
+        {% if 'instagram' in social_apps %}
+        <a href="{% provider_login_url 'instagram' process='connect' next='/onboarding/complete/' %}" class="social-button">
+            <i class="bi bi-instagram social-icon"></i>
+            Connect with Instagram
+        </a>
+        {% endif %}
+        
+        {% if 'linkedin' in social_apps %}
+        <a href="{% provider_login_url 'linkedin_oauth2' process='connect' next='/onboarding/complete/' %}" class="social-button">
+            <i class="bi bi-linkedin social-icon"></i>
+            Connect with LinkedIn
+        </a>
+        {% endif %}
+    </div>
+    
+    <a href="{% url 'onboarding:complete' %}" class="skip-link">Skip for now</a>
+</div>
+{% endblock %}

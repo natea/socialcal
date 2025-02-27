@@ -15,26 +15,42 @@ class TestSpotifyAPI(TestCase):
         cache.clear()
         
     @patch('events.utils.spotify.requests.post')
-    def test_get_access_token(self, mock_post):
-        # Mock successful token response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            'access_token': 'test_token',
-            'expires_in': 3600
-        }
-        mock_post.return_value = mock_response
-        mock_response.raise_for_status = MagicMock()
-        
-        # Test getting token
-        token = SpotifyAPI.get_access_token()
-        self.assertEqual(token, 'test_token')
-        
-        # Test token caching
-        cached_token = cache.get('spotify_access_token')
-        self.assertEqual(cached_token, 'test_token')
+    def test_get_access_token(self, mock_requests):
+        # Mock the cache to return None first, then the token
+        with patch('events.utils.spotify.cache') as mock_cache:
+            mock_cache.get.return_value = None
+            
+            # Mock the response from Spotify
+            mock_response = MagicMock()
+            mock_response.json.return_value = {
+                'access_token': 'test_token',
+                'expires_in': 3600
+            }
+            mock_response.raise_for_status = MagicMock()
+            mock_requests.return_value = mock_response
+            
+            # First call should get token from Spotify
+            token = SpotifyAPI.get_access_token()
+            assert token == 'test_token'
+            
+            # Verify cache was called to store the token
+            mock_cache.set.assert_called_once_with(
+                'spotify_access_token',
+                'test_token',
+                3600 - 60
+            )
+            
+            # Second call should get token from cache
+            mock_cache.get.return_value = 'test_token'
+            token = SpotifyAPI.get_access_token()
+            assert token == 'test_token'
         
     @patch('events.utils.spotify.requests.get')
-    def test_get_artist_id_from_name(self, mock_get):
+    @patch('events.utils.spotify.SpotifyAPI.get_access_token')
+    def test_get_artist_id_from_name(self, mock_get_token, mock_get):
+        # Mock access token
+        mock_get_token.return_value = 'test_token'
+        
         # Mock successful artist search response
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -45,88 +61,102 @@ class TestSpotifyAPI(TestCase):
                 }]
             }
         }
+        mock_response.raise_for_status = MagicMock()  # Just create the method
         mock_get.return_value = mock_response
-        mock_response.raise_for_status = MagicMock()
         
         # Test getting artist ID
         artist_id = SpotifyAPI.get_artist_id_from_name('Test Artist')
         self.assertEqual(artist_id, 'test_artist_id')
         
-        # Verify the search query
+        # Verify the search query included the artist
         args, kwargs = mock_get.call_args
         self.assertIn('artist:"Test Artist"', kwargs['params']['q'])
         
     @patch('events.utils.spotify.requests.get')
     def test_search_track(self, mock_get):
-        # Mock successful track search response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            'tracks': {
-                'items': [{
-                    'id': 'test_track_id',
-                    'name': 'Test Track',
-                    'artists': [{
-                        'id': 'test_artist_id',
-                        'name': 'Test Artist'
-                    }],
-                    'album': {
-                        'name': 'Test Album',
-                        'images': [{'url': 'test_image_url', 'width': 300, 'height': 300}]
-                    },
-                    'preview_url': 'test_preview_url',
-                    'external_urls': {'spotify': 'test_external_url'}
-                }]
+        # Mock the token
+        with patch('events.utils.spotify.SpotifyAPI.get_access_token') as mock_token:
+            mock_token.return_value = 'test_token'
+            
+            # Mock the search response
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            mock_response.json.return_value = {
+                'tracks': {
+                    'items': [{
+                        'id': 'track_id',
+                        'name': 'Test Track',
+                        'artists': [{
+                            'name': 'Test Artist',
+                            'id': 'artist_id'
+                        }],
+                        'preview_url': 'preview_url',
+                        'external_urls': {'spotify': 'spotify_url'},
+                        'album': {
+                            'name': 'Test Album',
+                            'images': [{'url': 'image_url'}]
+                        }
+                    }]
+                }
             }
-        }
-        mock_get.return_value = mock_response
-        mock_response.raise_for_status = MagicMock()
-        
-        # Test searching tracks
-        tracks = SpotifyAPI.search_track('test query')
-        self.assertEqual(len(tracks), 1)
-        track = tracks[0]
-        
-        # Verify track data
-        self.assertEqual(track['id'], 'test_track_id')
-        self.assertEqual(track['name'], 'Test Track')
-        self.assertEqual(track['artist'], 'Test Artist')
-        self.assertEqual(track['artist_id'], 'test_artist_id')
-        self.assertEqual(track['preview_url'], 'test_preview_url')
-        self.assertEqual(track['external_url'], 'test_external_url')
-        self.assertEqual(track['album']['name'], 'Test Album')
+            mock_get.return_value = mock_response
+            
+            # Test search
+            results = SpotifyAPI.search_track('test query')
+            assert results is not None
+            assert len(results) == 1
+            assert results[0]['name'] == 'Test Track'
+            assert results[0]['artist'] == 'Test Artist'
+            
+            # Verify the request was made correctly
+            mock_get.assert_called_once()
+            args, kwargs = mock_get.call_args
+            assert kwargs['headers'] == {'Authorization': 'Bearer test_token'}
+            assert kwargs['params']['q'] == 'test query'
+            assert kwargs['params']['type'] == 'track'
         
     @patch('events.utils.spotify.requests.get')
     def test_search_track_with_artist(self, mock_get):
-        # Mock successful track search response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            'tracks': {
-                'items': [{
-                    'id': 'test_track_id',
-                    'name': 'Test Track',
-                    'artists': [{
-                        'id': 'test_artist_id',
-                        'name': 'Test Artist'
-                    }],
-                    'album': {
-                        'name': 'Test Album',
-                        'images': [{'url': 'test_image_url', 'width': 300, 'height': 300}]
-                    },
-                    'preview_url': 'test_preview_url',
-                    'external_urls': {'spotify': 'test_external_url'}
-                }]
+        # Mock the token
+        with patch('events.utils.spotify.SpotifyAPI.get_access_token') as mock_token:
+            mock_token.return_value = 'test_token'
+            
+            # Mock the search response
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            mock_response.json.return_value = {
+                'tracks': {
+                    'items': [{
+                        'id': 'track_id',
+                        'name': 'Test Track',
+                        'artists': [{
+                            'name': 'Test Artist',
+                            'id': 'artist_id'
+                        }],
+                        'preview_url': 'preview_url',
+                        'external_urls': {'spotify': 'spotify_url'},
+                        'album': {
+                            'name': 'Test Album',
+                            'images': [{'url': 'image_url'}]
+                        }
+                    }]
+                }
             }
-        }
-        mock_get.return_value = mock_response
-        mock_response.raise_for_status = MagicMock()
-        
-        # Test searching tracks with artist filter
-        tracks = SpotifyAPI.search_track('test query', artist_name='Test Artist')
-        self.assertEqual(len(tracks), 1)
-        
-        # Verify the search query included the artist
-        args, kwargs = mock_get.call_args
-        self.assertIn('artist:"Test Artist"', kwargs['params']['q'])
+            mock_get.return_value = mock_response
+            
+            # Test search with artist
+            results = SpotifyAPI.search_track('test query', artist_name='Test Artist')
+            assert results is not None
+            assert len(results) == 1
+            assert results[0]['name'] == 'Test Track'
+            assert results[0]['artist'] == 'Test Artist'
+            
+            # Verify the request was made correctly
+            mock_get.assert_called_once()
+            args, kwargs = mock_get.call_args
+            assert kwargs['headers'] == {'Authorization': 'Bearer test_token'}
+            assert kwargs['params']['q'] == 'artist:"Test Artist" test query'
+            assert kwargs['params']['type'] == 'track'
 
 class TestSpotifyEventIntegration(TestCase):
     def test_is_music_event(self):

@@ -12,6 +12,9 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     re_path(r'^accounts/confirm-email/(?P<key>[-:\w]+)/$', confirm_email, name='account_confirm_email'),
 
+    # Onboarding
+    path('onboarding/', include('onboarding.urls')),
+
     # Calendar Views
     path('calendar/', include('calendar_app.urls')),
 

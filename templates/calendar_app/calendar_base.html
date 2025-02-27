@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load tz %}
+
+{% block title %}Calendar{% endblock %}
+
+{% block content %}
+{% timezone timezone %}
+<div class="container">
+    <!-- View Toggle and Navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="btn-group" role="group" aria-label="Calendar View Toggle">
+            <a href="{% url 'calendar:week' year=current_date.year month=current_date.month day=current_date.day %}" 
+               class="btn btn-outline-primary {% if view_type == 'week' %}active{% endif %}">
+                Week
+            </a>
+            <a href="{% url 'calendar:month' year=current_date.year month=current_date.month %}" 
+               class="btn btn-outline-primary {% if view_type == 'month' %}active{% endif %}">
+                Month
+            </a>
+        </div>
+        
+        <div class="d-flex align-items-center">
+            <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}{% if user.is_authenticated %}?user_id={{ user.id }}{% endif %}"
+               class="btn btn-outline-secondary me-2"
+               data-protocol="webcal">
+                <i class="bi bi-calendar-event"></i> Add to Calendar
+            </a>
+            {% block navigation_buttons %}{% endblock %}
+        </div>
+    </div>
+
+    {% block calendar_content %}{% endblock %}
+</div>
+{% endtimezone %}
+{% endblock %} 

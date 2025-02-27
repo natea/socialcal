@@ -1,9 +1,14 @@
-{% extends "base.html" %}
+{% extends "calendar_app/calendar_base.html" %}
 {% load tz %}
 
 {% block title %}Calendar - {{ current_date|date:"F Y" }}{% endblock %}
 
-{% block content %}
+{% block navigation_buttons %}
+<a href="{% url 'calendar:month' year=prev_month.year month=prev_month.month %}" class="btn btn-outline-primary">&laquo; Previous</a>
+<a href="{% url 'calendar:month' year=next_month.year month=next_month.month %}" class="btn btn-outline-primary">Next &raquo;</a>
+{% endblock %}
+
+{% block calendar_content %}
 {% timezone timezone %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>{{ current_date|date:"F Y" }}</h2>
@@ -13,8 +18,6 @@
            data-protocol="webcal">
             <i class="bi bi-calendar-event"></i> Add to Calendar
         </a>
-        <a href="{% url 'calendar:month' year=prev_month.year month=prev_month.month %}" class="btn btn-outline-primary">&laquo; Previous</a>
-        <a href="{% url 'calendar:month' year=next_month.year month=next_month.month %}" class="btn btn-outline-primary">Next &raquo;</a>
     </div>
 </div>
 

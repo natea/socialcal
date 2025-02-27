@@ -1,0 +1,229 @@
+{% extends "calendar_app/calendar_base.html" %}
+{% load tz %}
+
+{% block navigation_buttons %}
+<button class="btn btn-outline-primary" id="prevWeek">
+    <i class="bi bi-chevron-left"></i> Previous
+</button>
+<button class="btn btn-outline-primary mx-2" id="todayBtn">Today</button>
+<button class="btn btn-outline-primary" id="nextWeek">
+    Next <i class="bi bi-chevron-right"></i>
+</button>
+{% endblock %}
+
+{% block calendar_content %}
+<!-- Week View -->
+<div class="week-view mb-4">
+    <div class="d-flex justify-content-between">
+        {% for date in week_dates %}
+        <div class="day-column text-center" 
+             data-date="{{ date.date|date:'Y-m-d' }}"
+             style="flex: 1; cursor: pointer;">
+            <div class="day-name">{{ date.date|date:"D" }}</div>
+            <div class="day-number rounded-circle d-inline-block"
+                 style="width: 40px; height: 40px; line-height: 36px;">
+                {{ date.date|date:"j" }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Day Detail View -->
+<div class="day-detail mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 id="selectedDate">{{ selected_date|date:"l, F j, Y" }}</h3>
+        <button class="btn btn-primary" id="addEvent">
+            <i class="bi bi-plus"></i> Add Event
+        </button>
+    </div>
+    
+    <div id="dayEvents">
+        {% if events %}
+            {% for event in events %}
+            {% if event.start_time.date == selected_date.date %}
+            <a href="{% url 'events:detail' pk=event.pk %}" class="text-decoration-none">
+                <div class="event-card p-3 mb-2 bg-light rounded">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1 text-body">{{ event.title }}</h5>
+                            <p class="mb-1 text-muted">
+                                {{ event.start_time|date:"g:i A" }} - {{ event.end_time|date:"g:i A" }}
+                            </p>
+                            {% if event.location %}
+                            <p class="mb-0 text-muted"><i class="bi bi-geo-alt"></i> {{ event.location }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+            <p class="text-center text-muted">No events for this day. Time to plan something fun!</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.day-column:hover .day-number:not(.selected) {
+    background-color: #f0f0f0;
+}
+.day-column .day-number {
+    border: 2px solid transparent;  /* Add transparent border by default */
+    width: 40px;
+    height: 40px;
+    line-height: 36px;
+    border-radius: 50%;
+}
+.day-column .day-number.selected {
+    background-color: var(--bs-primary);
+    color: white;
+    border-color: transparent;  /* Remove border when selected */
+}
+.day-column .day-number.today:not(.selected) {
+    border: 2px solid var(--bs-primary);
+    color: var(--bs-primary);
+    background-color: transparent;
+}
+.event-card {
+    transition: box-shadow 0.3s ease, transform 0.1s ease;
+}
+.event-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+    background-color: #f8f9fa !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dayColumns = document.querySelectorAll('.day-column');
+    
+    function updateDayStates() {
+        // Get today's date in local timezone
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
+        const selectedDate = '{{ selected_date|date:"Y-m-d" }}';
+        
+        // Clear all states first
+        dayColumns.forEach(column => {
+            const dayNumber = column.querySelector('.day-number');
+            dayNumber.classList.remove('today', 'selected');
+        });
+        
+        // Apply correct states
+        dayColumns.forEach(column => {
+            const dayNumber = column.querySelector('.day-number');
+            const date = column.dataset.date;
+            
+            // Compare dates exactly
+            if (date === today) {
+                dayNumber.classList.add('today');
+            }
+            if (date === selectedDate) {
+                dayNumber.classList.add('selected');
+                // If a day is selected, it shouldn't show the today outline
+                if (date === today) {
+                    dayNumber.classList.remove('today');
+                }
+            }
+        });
+    }
+    
+    // Initial state setup
+    updateDayStates();
+    
+    dayColumns.forEach(column => {
+        column.addEventListener('click', function() {
+            const date = this.dataset.date;
+            
+            // Update selected date in UI
+            const selectedDate = new Date(date + 'T12:00:00');
+            document.getElementById('selectedDate').textContent = selectedDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            
+            // Update day states
+            dayColumns.forEach(col => {
+                col.querySelector('.day-number').classList.remove('selected');
+            });
+            this.querySelector('.day-number').classList.add('selected');
+            
+            // Then fetch events for the selected date
+            fetch(`{% url 'events:day_events' 'DATE' %}`.replace('DATE', date))
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update events list
+                    const eventsContainer = document.getElementById('dayEvents');
+                    if (data.events.length === 0) {
+                        eventsContainer.innerHTML = '<p class="text-center text-muted">No events for this day. Time to plan something fun!</p>';
+                    } else {
+                        eventsContainer.innerHTML = data.events.map(event => `
+                            <a href="/events/${event.id}/" class="text-decoration-none">
+                                <div class="event-card p-3 mb-2 bg-light rounded">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5 class="mb-1 text-body">${event.title}</h5>
+                                            <p class="mb-1 text-muted">
+                                                ${new Date(event.start_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}
+                                                ${event.end_time ? ` - ${new Date(event.end_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}` : ''}
+                                            </p>
+                                            ${event.location ? `<p class="mb-0 text-muted"><i class="bi bi-geo-alt"></i> ${event.location}</p>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        `).join('');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const eventsContainer = document.getElementById('dayEvents');
+                    eventsContainer.innerHTML = '<p class="text-center text-danger">Error loading events. Please try again.</p>';
+                });
+        });
+    });
+
+    // Add click handlers for navigation buttons
+    document.getElementById('prevWeek').addEventListener('click', function() {
+        const firstDate = new Date(document.querySelector('.day-column').dataset.date + 'T12:00:00');
+        firstDate.setDate(firstDate.getDate() - 7);  // Go back 7 days from the first day of current week
+        const year = firstDate.getFullYear();
+        const month = firstDate.getMonth() + 1;  // JavaScript months are 0-based
+        const day = firstDate.getDate();
+        window.location.href = `/calendar/week/${year}/${month}/${day}/`;
+    });
+
+    document.getElementById('nextWeek').addEventListener('click', function() {
+        const firstDate = new Date(document.querySelector('.day-column').dataset.date + 'T12:00:00');
+        firstDate.setDate(firstDate.getDate() + 7);  // Go forward 7 days from the first day of current week
+        const year = firstDate.getFullYear();
+        const month = firstDate.getMonth() + 1;  // JavaScript months are 0-based
+        const day = firstDate.getDate();
+        window.location.href = `/calendar/week/${year}/${month}/${day}/`;
+    });
+
+    document.getElementById('todayBtn').addEventListener('click', function() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;  // JavaScript months are 0-based
+        const day = today.getDate();
+        window.location.href = `/calendar/week/${year}/${month}/${day}/`;
+    });
+
+    // Add click handler for Add Event button
+    document.getElementById('addEvent').addEventListener('click', function() {
+        window.location.href = "{% url 'events:create' %}";
+    });
+});
+</script>
+{% endblock %} 

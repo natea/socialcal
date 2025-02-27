@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+{% load socialaccount %}
+
+{% block extra_css %}
+<style>
+.onboarding-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.onboarding-icon {
+    color: #8A2BE2;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.onboarding-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.onboarding-text {
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.google-button {
+    background: white;
+    color: #444;
+    border: 1px solid #ddd;
+    padding: 0.8rem 2rem;
+    border-radius: 5px;
+    text-decoration: none;
+    display: block;
+    margin: 0 auto 2rem;
+    transition: background-color 0.3s;
+    width: 100%;
+    max-width: 300px;
+}
+
+.google-button:hover {
+    background: #f5f5f5;
+    text-decoration: none;
+    color: #444;
+}
+
+.google-icon {
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.skip-link {
+    color: #666;
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: block;
+    margin-top: 1rem;
+}
+
+.skip-link:hover {
+    color: #8A2BE2;
+    text-decoration: none;
+}
+
+body {
+    background-color: #F8F0FF;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="onboarding-icon">
+        <i class="bi bi-calendar"></i>
+    </div>
+    {% if has_calendar_access %}
+    <h1 class="onboarding-title">Sync Your Calendar</h1>
+    <p class="onboarding-text">Your calendar is ready to sync!</p>
+    
+    <a href="{% url 'onboarding:social_connect' %}" class="google-button">
+        <i class="bi bi-check-circle"></i>
+        Continue to Next Step
+    </a>
+    {% else %}
+    <h1 class="onboarding-title">Grant Calendar Access</h1>
+    <p class="onboarding-text">Allow SocialCal to access your calendar to sync events.</p>
+    
+    <a href="{% provider_login_url 'google' process='connect' scope='calendar' next='/onboarding/social-connect/' %}" class="google-button">
+        <img src="{% static 'images/google-icon.svg' %}" alt="Google" class="google-icon" width="20">
+        Connect with Google Calendar
+    </a>
+    {% endif %}
+    
+    <a href="{% url 'onboarding:social_connect' %}" class="skip-link">Skip for now</a>
+</div>
+{% endblock %}
