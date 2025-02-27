@@ -19,11 +19,21 @@ pip install -r requirements.txt || {
     exit 1
 }
 
+# Explicitly install django-redis
+log "Explicitly installing django-redis..."
+pip install django-redis==5.4.0
+
 # Verify critical packages are installed
 log "Verifying critical packages..."
-python -c "import django, django_redis, psycopg2" || {
+python -c "import django, psycopg2" || {
     log "WARNING: Some critical packages may be missing. Installing them explicitly..."
-    pip install django-redis psycopg2-binary
+    pip install psycopg2-binary
+}
+
+# Check if django-redis is installed, if not, set environment variable to use local memory cache
+python -c "import django_redis" || {
+    log "WARNING: django-redis could not be imported. Setting DISABLE_REDIS_CACHE=true"
+    export DISABLE_REDIS_CACHE=true
 }
 
 # Run tests if not in collecting static mode
