@@ -5,7 +5,7 @@ import os
 SECRET_KEY = 'django-insecure-replace-with-your-secret-key'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
@@ -14,16 +14,17 @@ INTERNAL_IPS = [
     '127.0.0.1',
 ]
 
-INSTALLED_APPS += [
+if DEBUG:
+    INSTALLED_APPS += [
     'debug_toolbar',
-]
+    ]
 
-MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
 
-# Configure Debug Toolbar
-DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: True,
-}
+    # Configure Debug Toolbar
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': lambda request: True,
+    }
 
 # Database
 DATABASES = {

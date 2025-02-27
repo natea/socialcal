@@ -4,6 +4,7 @@ import os
 import logging
 
 # SECURITY WARNING: keep the secret key used in production secret!
+SECURITY WARNING: keep the secret key used in production secret!
 try:
     SECRET_KEY = get_env_variable('DJANGO_SECRET_KEY')
 except ImproperlyConfigured:
@@ -13,9 +14,18 @@ except ImproperlyConfigured:
         raise
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+# Set DEBUG to False when running on Render as recommended
+DEBUG = False  # Always False in production
 
-ALLOWED_HOSTS = ['socialcal.onrender.com', '.onrender.com']
+# Configure allowed hosts according to Render's recommendations
+ALLOWED_HOSTS = []
+# Add the Render external hostname to allowed hosts
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Add custom domains to allowed hosts
+ALLOWED_HOSTS.extend(['socialcal.io', 'www.socialcal.io', 'socialcal.onrender.com'])
 
 # Database configuration
 DATABASES = {
