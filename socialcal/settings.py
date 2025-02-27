@@ -31,8 +31,7 @@ RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# Add custom domains to allowed hosts
-ALLOWED_HOSTS.extend(['socialcal.io', 'www.socialcal.io'])
+
 
 # Add any additional domains from environment variable if set
 additional_hosts = os.environ.get('ADDITIONAL_ALLOWED_HOSTS', '')
