@@ -41,5 +41,5 @@ services:
 databases:
   - name: socialcal-db-prs
     databaseName: socialcal-db-prs
-    user: socialcal
+    user: socialcal_db_prs_user
     ipAllowList: []

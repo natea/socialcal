@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
+import logging
 
 def get_env_variable(var_name):
     """Get the environment variable or return exception."""
@@ -188,15 +189,43 @@ SPOTIFY_CLIENT_ID = get_env_variable('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = get_env_variable('SPOTIFY_CLIENT_SECRET')
 
 # Redis Cache Configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+logger = logging.getLogger(__name__)
+
+try:
+    import django_redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': 'redis://127.0.0.1:6379/1',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'RETRY_ON_TIMEOUT': True,
+                'IGNORE_EXCEPTIONS': True,  # Don't crash if Redis is unavailable
+            }
         }
     }
-}
+    logger.info("Using Redis cache backend")
+except ImportError:
+    # Fallback to LocMemCache if django_redis is not available
+    logger.warning("django_redis not available, using LocMemCache instead")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Fallback to LocMemCache if Redis is explicitly disabled
+if os.environ.get('DISABLE_REDIS_CACHE', 'false').lower() == 'true':
+    logger.warning("Redis cache disabled by environment variable, using LocMemCache")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
 
 # Debug Toolbar Configuration
 DEBUG_TOOLBAR_CONFIG = {
