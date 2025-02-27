@@ -101,9 +101,19 @@ CACHES = {
             'SOCKET_CONNECT_TIMEOUT': 5,
             'SOCKET_TIMEOUT': 5,
             'RETRY_ON_TIMEOUT': True,
+            'IGNORE_EXCEPTIONS': True,  # Don't crash if Redis is unavailable
         }
     }
 }
+
+# Fallback to LocMemCache if Redis is not available
+if os.environ.get('DISABLE_REDIS_CACHE', 'false').lower() == 'true':
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
 
 # Session configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
