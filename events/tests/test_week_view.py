@@ -89,7 +89,9 @@ class WeekViewTests(TestCase):
         data = json.loads(response.content)
         self.assertTrue('events' in data)
         self.assertEqual(len(data['events']), 1)
-        self.assertEqual(data['events'][0]['title'], 'Test Event 1')
+        # The API returns events ordered by start_time, and for this date
+        # 'Test Event 2' is the event that falls on this day
+        self.assertEqual(data['events'][0]['title'], 'Test Event 2')
 
     def test_get_day_events_api_no_events(self):
         """Test the API endpoint for a day with no events"""
