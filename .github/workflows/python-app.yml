@@ -70,6 +70,12 @@ jobs:
       run: |
         python manage.py migrate
         
+    - name: Ensure test directories are proper packages
+      run: |
+        mkdir -p core/tests
+        touch core/tests/__init__.py
+        find . -type d -name "tests" -exec touch {}/__init__.py \;
+        
     - name: Test with pytest
       run: |
         python -m pytest -v --ds=socialcal.test_settings 2>/dev/null || exit $?
