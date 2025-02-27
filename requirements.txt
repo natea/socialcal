@@ -55,6 +55,7 @@ filelock==3.16.1
 filetype==1.2.0
 firecrawl-py==1.6.8
 flake8==7.1.1
+freezegun==1.4.0
 frozenlist==1.4.1
 fsspec==2024.9.0
 google-ai-generativelanguage==0.6.10
