@@ -4,7 +4,6 @@ import os
 import logging
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECURITY WARNING: keep the secret key used in production secret!
 try:
     SECRET_KEY = get_env_variable('DJANGO_SECRET_KEY')
 except ImproperlyConfigured:

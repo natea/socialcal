@@ -37,6 +37,7 @@ decorator==5.1.1
 defusedxml==0.7.1
 Deprecated==1.2.15
 distro==1.9.0
+dj-database-url==2.1.0
 Django==4.2.9
 django-allauth==0.60.1
 django-cors-headers==4.6.0
@@ -98,7 +99,7 @@ langdetect==1.0.9
 litellm==1.59.0
 lxml==5.3.0
 lxml_html_clean==0.4.1
-markdown-it-py==3.0.0
+markdown-it-py==3.0.2
 MarkupSafe==3.0.2
 marshmallow==3.25.1
 matplotlib-inline==0.1.7
@@ -135,6 +136,7 @@ propcache==0.2.1
 proto-plus==1.25.0
 protobuf==5.29.3
 psutil==6.1.1
+psycopg2-binary==2.9.9
 ptyprocess==0.7.0
 pure_eval==0.2.3
 pyasn1==0.6.1
