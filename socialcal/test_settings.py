@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import logging
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,13 +45,44 @@ DATABASES = {
 # Use console email backend for tests
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# Disable cache for tests
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+# Configure cache for tests
+logger = logging.getLogger(__name__)
+
+try:
+    import django_redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': 'redis://127.0.0.1:6379/1',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'RETRY_ON_TIMEOUT': True,
+                'IGNORE_EXCEPTIONS': True,  # Don't crash if Redis is unavailable
+            }
+        }
     }
-}
+    logger.info("Using Redis cache backend for tests")
+except ImportError:
+    # Fallback to LocMemCache if django_redis is not available
+    logger.warning("django_redis not available, using LocMemCache for tests")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Fallback to LocMemCache if Redis is explicitly disabled
+if os.environ.get('DISABLE_REDIS_CACHE', 'false').lower() == 'true':
+    logger.warning("Redis cache disabled by environment variable, using LocMemCache for tests")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
 
 # Password hashers - use fast password hashing for tests
 PASSWORD_HASHERS = [

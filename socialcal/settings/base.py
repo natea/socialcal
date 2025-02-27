@@ -169,4 +169,44 @@ LOGIN_URL = 'account_login'
 # Social Account Settings
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = False
-SOCIALACCOUNT_EMAIL_REQUIRED = False 
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+
+# Redis Cache Configuration
+import logging
+logger = logging.getLogger(__name__)
+
+try:
+    import django_redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'RETRY_ON_TIMEOUT': True,
+                'IGNORE_EXCEPTIONS': True,  # Don't crash if Redis is unavailable
+            }
+        }
+    }
+    logger.info("Using Redis cache backend")
+except ImportError:
+    # Fallback to LocMemCache if django_redis is not available
+    logger.warning("django_redis not available, using LocMemCache instead")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Fallback to LocMemCache if Redis is explicitly disabled
+if os.environ.get('DISABLE_REDIS_CACHE', 'false').lower() == 'true':
+    logger.warning("Redis cache disabled by environment variable, using LocMemCache")
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    } 

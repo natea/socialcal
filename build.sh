@@ -21,7 +21,10 @@ pip install -r requirements.txt || {
 
 # Explicitly install django-redis
 log "Explicitly installing django-redis..."
-pip install django-redis==5.4.0
+pip install django-redis==5.4.0 || {
+    log "WARNING: Failed to install django-redis, setting DISABLE_REDIS_CACHE=true"
+    export DISABLE_REDIS_CACHE=true
+}
 
 # Verify critical packages are installed
 log "Verifying critical packages..."
@@ -35,6 +38,13 @@ python -c "import django_redis" || {
     log "WARNING: django-redis could not be imported. Setting DISABLE_REDIS_CACHE=true"
     export DISABLE_REDIS_CACHE=true
 }
+
+# Make sure the DISABLE_REDIS_CACHE environment variable is available to subprocesses
+if [ "$DISABLE_REDIS_CACHE" = "true" ]; then
+    log "DISABLE_REDIS_CACHE is set to true, will use local memory cache"
+    # Export the variable to make it available to subprocesses
+    export DISABLE_REDIS_CACHE=true
+fi
 
 # Run tests if not in collecting static mode
 if [ "$COLLECTING_STATIC" != "true" ]; then
