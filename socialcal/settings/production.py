@@ -24,7 +24,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # Add custom domains to allowed hosts
-ALLOWED_HOSTS.extend(['socialcal.io', 'www.socialcal.io', 'socialcal.onrender.com', 'socialcal-pr-16.onrender.com'])
+ALLOWED_HOSTS.extend(['socialcal.io', 'www.socialcal.io', 'socialcal.onrender.com', 'socialcal-pr-16.onrender.com', 'localhost'])
 
 # Add WhiteNoise middleware
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')

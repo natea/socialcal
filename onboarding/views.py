@@ -13,9 +13,15 @@ from django.utils import timezone
 User = get_user_model()
 
 def welcome(request):
-    if request.user.is_authenticated and request.user.profile.has_completed_onboarding:
+    from allauth.socialaccount.models import SocialApp
+    
+    # Check if Google provider is configured
+    has_google_provider = SocialApp.objects.filter(provider='google').exists()
+    
+    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.has_completed_onboarding:
         return redirect('calendar:index')
-    return render(request, 'onboarding/welcome.html')
+    
+    return render(request, 'onboarding/welcome.html', {'has_google_provider': has_google_provider})
 
 @login_required
 def google_oauth(request):
