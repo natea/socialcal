@@ -85,8 +85,17 @@ def calendar_sync(request):
 @login_required
 def social_connect(request):
     social_apps = [app.provider for app in SocialApp.objects.all()]
+    
+    # Check if each social provider is configured
+    facebook_provider_exists = SocialApp.objects.filter(provider='facebook').exists()
+    instagram_provider_exists = SocialApp.objects.filter(provider='instagram').exists()
+    linkedin_provider_exists = SocialApp.objects.filter(provider='linkedin_oauth2').exists()
+    
     context = {
         'social_apps': social_apps,
+        'facebook_provider_exists': facebook_provider_exists,
+        'instagram_provider_exists': instagram_provider_exists,
+        'linkedin_provider_exists': linkedin_provider_exists
     }
     return render(request, 'onboarding/social_connect.html', context)
 

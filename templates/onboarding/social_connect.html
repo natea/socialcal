@@ -88,21 +88,21 @@ body {
     <p class="onboarding-text">Find and connect with your friends on SoCal!</p>
     
     <div class="social-buttons">
-        {% if 'facebook' in social_apps %}
+        {% if 'facebook' in social_apps and facebook_provider_exists %}
         <a href="{% provider_login_url 'facebook' process='connect' next='/onboarding/complete/' %}" class="social-button">
             <i class="bi bi-facebook social-icon"></i>
             Connect with Facebook
         </a>
         {% endif %}
         
-        {% if 'instagram' in social_apps %}
+        {% if 'instagram' in social_apps and instagram_provider_exists %}
         <a href="{% provider_login_url 'instagram' process='connect' next='/onboarding/complete/' %}" class="social-button">
             <i class="bi bi-instagram social-icon"></i>
             Connect with Instagram
         </a>
         {% endif %}
         
-        {% if 'linkedin' in social_apps %}
+        {% if 'linkedin' in social_apps and linkedin_provider_exists %}
         <a href="{% provider_login_url 'linkedin_oauth2' process='connect' next='/onboarding/complete/' %}" class="social-button">
             <i class="bi bi-linkedin social-icon"></i>
             Connect with LinkedIn
