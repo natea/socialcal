@@ -73,9 +73,9 @@ RUN useradd -m -s /bin/bash app
 
 # Set work directory and create necessary directories
 WORKDIR /app
-RUN mkdir -p /app/staticfiles /app/media && \
+RUN mkdir -p /app/staticfiles /app/media /app/static && \
     chown -R app:app /app && \
-    chmod -R 755 /app/staticfiles
+    chmod -R 755 /app/staticfiles /app/static
 
 # Create virtual environment
 COPY --from=builder /opt/venv /opt/venv
@@ -103,6 +103,9 @@ RUN mkdir -p /tmp/.X11-unix && \
 
 # Copy project files and set permissions
 COPY --chown=app:app . .
+
+# Ensure static files directory has proper permissions
+RUN chmod -R 755 /app/static /app/staticfiles
 
 # Switch to app user for remaining operations
 USER app

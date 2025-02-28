@@ -26,6 +26,9 @@ if RENDER_EXTERNAL_HOSTNAME:
 # Add custom domains to allowed hosts
 ALLOWED_HOSTS.extend(['socialcal.io', 'www.socialcal.io', 'socialcal.onrender.com', 'socialcal-pr-16.onrender.com'])
 
+# Add WhiteNoise middleware
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
 # Database configuration
 DATABASES = {
     'default': dj_database_url.config(
@@ -48,16 +51,23 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Static files configuration
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
+
+# WhiteNoise Configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True
+WHITENOISE_ROOT = STATIC_ROOT
+WHITENOISE_MAX_AGE = 31536000  # 1 year in seconds
+
+# Add additional static files finders
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
 
-# WhiteNoise Configuration
-WHITENOISE_AUTOREFRESH = True
-WHITENOISE_ROOT = STATIC_ROOT
+# Ensure STATICFILES_DIRS includes the static directory
+if os.path.exists(os.path.join(BASE_DIR, 'static')):
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 # Sites framework
 SITE_ID = 1
@@ -134,3 +144,32 @@ if os.environ.get('DISABLE_REDIS_CACHE', 'false').lower() == 'true':
 # Session configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
+
+# Add logging for static files
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'whitenoise': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}

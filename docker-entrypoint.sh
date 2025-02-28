@@ -60,9 +60,28 @@ END
 # Run migrations
 python manage.py migrate --noinput
 
+# Ensure static directories exist with proper permissions
+mkdir -p /app/staticfiles /app/static/images
+chmod -R 755 /app/staticfiles /app/static
+
 # Collect static files
 echo "Collecting static files..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
+
+# Verify static files were collected properly
+echo "Verifying static files..."
+if [ -f "/app/staticfiles/images/google-icon.svg" ]; then
+    echo "Static files collected successfully: google-icon.svg exists"
+else
+    echo "Warning: google-icon.svg not found in staticfiles"
+    # Try to copy it manually if it exists in the source
+    if [ -f "/app/static/images/google-icon.svg" ]; then
+        echo "Found google-icon.svg in source, copying manually..."
+        mkdir -p /app/staticfiles/images
+        cp /app/static/images/google-icon.svg /app/staticfiles/images/
+        echo "Manual copy complete"
+    fi
+fi
 
 # Create default site
 python manage.py shell -c "from django.contrib.sites.models import Site;Site.objects.get_or_create(id=1, defaults={'domain': 'socialcal.onrender.com', 'name': 'SocialCal'})"
