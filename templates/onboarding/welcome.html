@@ -106,9 +106,13 @@ a:hover {
     <h1 class="onboarding-title">Welcome to SocialCal</h1>
     <p class="onboarding-text">Connect your Google account to get started!</p>
     
+    {% if has_google_provider %}
     <a href="{% provider_login_url 'google' process='oauth' scope='openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' next='/onboarding/event-types/' %}" class="google-button">
         <img src="{% static 'images/google-icon.svg' %}" alt="Google" class="google-icon" width="20">
         Continue with Google
     </a>
+    {% else %}
+    <p class="alert alert-warning">Google login is currently unavailable. Please try again later.</p>
+    {% endif %}
 </div>
 {% endblock %}

@@ -43,6 +43,9 @@ def event_types(request):
         provider='google'
     ).first()
     
+    # Check if Google provider is configured
+    has_google_provider = SocialApp.objects.filter(provider='google').exists()
+    
     if request.method == 'POST':
         selected_types = request.POST.getlist('event_types')
         request.user.profile.event_preferences = selected_types
@@ -55,7 +58,8 @@ def event_types(request):
     
     context = {
         'has_google_account': bool(google_account),
-        'has_calendar_access': request.user.profile.has_google_calendar_access if google_account else False
+        'has_calendar_access': request.user.profile.has_google_calendar_access if google_account else False,
+        'has_google_provider': has_google_provider
     }
     return render(request, 'onboarding/event_types.html', context)
 
@@ -69,8 +73,12 @@ def calendar_sync(request):
     
     has_calendar_access = request.user.profile.has_google_calendar_access if google_account else False
     
+    # Check if Google provider is configured
+    has_google_provider = SocialApp.objects.filter(provider='google').exists()
+    
     context = {
-        'has_calendar_access': has_calendar_access
+        'has_calendar_access': has_calendar_access,
+        'has_google_provider': has_google_provider
     }
     return render(request, 'onboarding/calendar_sync.html', context)
 

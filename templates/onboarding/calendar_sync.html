@@ -92,10 +92,14 @@ body {
     <h1 class="onboarding-title">Grant Calendar Access</h1>
     <p class="onboarding-text">Allow SocialCal to access your calendar to sync events.</p>
     
+    {% if has_google_provider %}
     <a href="{% provider_login_url 'google' process='connect' scope='calendar' next='/onboarding/social-connect/' %}" class="google-button">
         <img src="{% static 'images/google-icon.svg' %}" alt="Google" class="google-icon" width="20">
         Connect with Google Calendar
     </a>
+    {% else %}
+    <p class="alert alert-warning">Google login is currently unavailable. Please try again later.</p>
+    {% endif %}
     {% endif %}
     
     <a href="{% url 'onboarding:social_connect' %}" class="skip-link">Skip for now</a>
