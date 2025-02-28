@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.urls import reverse
+from django.http import HttpResponse
+from django.views.generic import TemplateView
 
 def home(request):
     if request.user.is_authenticated:
@@ -27,4 +29,21 @@ def search(request):
     query = request.GET.get('q', '')
     # Add search logic here
     context = {'query': query, 'results': []}
-    return render(request, 'core/search.html', context) 
+    return render(request, 'core/search.html', context)
+
+def index(request):
+    """
+    View for the homepage.
+    """
+    return render(request, 'core/index.html')
+
+def debug_error(request):
+    """
+    View that intentionally raises an exception to test error handling.
+    Only available in DEBUG mode.
+    """
+    from django.conf import settings
+    if settings.DEBUG:
+        # Intentionally raise an exception to test error handling
+        raise Exception("This is a test exception to verify error handling")
+    return HttpResponse("Debug error view only available in DEBUG mode") 
