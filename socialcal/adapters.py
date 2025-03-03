@@ -4,8 +4,10 @@ from django.conf import settings
 from allauth.account.utils import user_email, user_field, user_username
 from django.contrib.auth import get_user_model
 import uuid
+import logging
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     def get_connect_redirect_url(self, request, socialaccount):
@@ -59,7 +61,15 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
 
         try:
             # Try to find an existing user with this email
-            user = User.objects.get(email=email)
+            users = User.objects.filter(email=email)
+            
+            if users.count() > 1:
+                # If multiple users found, use the first one
+                user = users.first()
+                # Log this issue for admin attention
+                logger.warning(f"Multiple users found with email {email}. Using user ID {user.id}.")
+            else:
+                user = users.get()
             
             # If we found a user but the social account is not connected
             if not sociallogin.is_existing:

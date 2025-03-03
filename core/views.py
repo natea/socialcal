@@ -37,6 +37,18 @@ def index(request):
     """
     return render(request, 'core/index.html')
 
+def privacy(request):
+    """
+    View for the privacy policy page.
+    """
+    return render(request, 'core/privacy.html')
+
+def terms_of_service(request):
+    """
+    View for the terms of service page.
+    """
+    return render(request, 'core/terms_of_service.html')
+
 def debug_error(request):
     """
     View that intentionally raises an exception to test error handling.

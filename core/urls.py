@@ -9,6 +9,8 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('contact/', views.contact, name='contact'),
     path('search/', views.search, name='search'),
+    path('privacy/', views.privacy, name='privacy'),
+    path('terms-of-service/', views.terms_of_service, name='terms_of_service'),
 ]
 
 # Add debug routes only in DEBUG mode
