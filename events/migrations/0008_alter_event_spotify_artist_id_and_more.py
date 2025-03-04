@@ -16,12 +16,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='event',
             name='spotify_artist_id',
-            field=models.CharField(blank=True, max_length=100),
+            field=models.CharField(blank=True, max_length=255),
         ),
         migrations.AlterField(
             model_name='event',
             name='spotify_artist_name',
-            field=models.CharField(blank=True, max_length=200),
+            field=models.CharField(blank=True, max_length=255),
         ),
         migrations.AlterField(
             model_name='event',
@@ -36,12 +36,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='event',
             name='spotify_track_id',
-            field=models.CharField(blank=True, max_length=100),
+            field=models.CharField(blank=True, max_length=255),
         ),
         migrations.AlterField(
             model_name='event',
             name='spotify_track_name',
-            field=models.CharField(blank=True, max_length=200),
+            field=models.CharField(blank=True, max_length=255),
         ),
         migrations.CreateModel(
             name='SiteScraper',
