@@ -128,10 +128,12 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
             Create a CSS selector schema to extract the following fields for EACH event on the page:
             1. Event title
             2. Date
-            3. Location
-            4. Description (if available)
-            5. URL (the link to the event details)
-            6. Image URL (if available)
+            3. Start time
+            4. End time (if available)
+            5. Location
+            6. Description (if available)
+            7. URL (the link to the event details)
+            8. Image URL (if available)
             
             IMPORTANT NOTES:
             - Your selectors should target EACH individual event item, not just the first one.
