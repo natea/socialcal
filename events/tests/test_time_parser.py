@@ -92,14 +92,28 @@ class TestTimeParser(TestCase):
         self.assertEqual(time, "20:00:00")
 
     def test_parse_datetime_with_slash_format(self):
-        """Test parsing date and time with slash format."""
-        date_str = "4/12/2025"
-        time_str = "8:00 PM"
+        """Test parsing dates with slash formats."""
+        # Test with MM/DD/YYYY format
+        date_str, time_str = parse_datetime("03/15/2024", "7:30 PM")
+        self.assertEqual(date_str, "2024-03-15")
+        self.assertEqual(time_str, "19:30:00")
         
-        date, time = parse_datetime(date_str, time_str)
+    def test_parse_datetime_with_day_date_time_slash_format(self):
+        """Test parsing dates with day/date/time slash-separated format."""
+        # Test the slash-separated format
+        date_part, time_part, _ = extract_date_time_from_string("Tuesday / March 4, 2025 / 6:30 p.m.")
+        self.assertEqual(date_part, "March 4, 2025")
+        self.assertEqual(time_part, "6:30 PM")
         
-        self.assertEqual(date, "2025-04-12")
-        self.assertEqual(time, "20:00:00")
+        # Test with actual parse_datetime function
+        date_str, time_str = parse_datetime("Tuesday / March 4, 2025 / 6:30 p.m.", "")
+        self.assertEqual(date_str, "2025-03-04")
+        self.assertEqual(time_str, "18:30:00")
+        
+        # Test with alternative spacing
+        date_part, time_part, _ = extract_date_time_from_string("Wednesday / March 5, 2025 / 7:00 p.m.")
+        self.assertEqual(date_part, "March 5, 2025")
+        self.assertEqual(time_part, "7:00 PM")
 
     def test_parse_datetime_with_iso_format(self):
         """Test parsing date and time with ISO format."""

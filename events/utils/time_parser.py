@@ -35,6 +35,25 @@ def extract_date_time_from_string(input_str: str) -> tuple[str, str, str]:
             logger.info(f"Successfully extracted abbreviated format - date: '{date_part}', start time: '{start_time}', end time: '{end_time}'")
             return date_part, start_time, end_time
         
+        # Check for format: "Day / Month Day, Year / Time"
+        # Example: "Tuesday / March 4, 2025 / 6:30 p.m."
+        day_slash_date_slash_time_pattern = r'([A-Za-z]+day)\s+/\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})\s+/\s+(\d{1,2}:\d{2}\s*[pPaA]\.?[mM]\.?)'
+        day_slash_date_slash_time_match = re.search(day_slash_date_slash_time_pattern, input_str, re.IGNORECASE)
+        
+        if day_slash_date_slash_time_match:
+            day_of_week = day_slash_date_slash_time_match.group(1)  # e.g., "Tuesday"
+            date_part = day_slash_date_slash_time_match.group(2)  # e.g., "March 4, 2025"
+            time_part = day_slash_date_slash_time_match.group(3)  # e.g., "6:30 p.m."
+            
+            # Standardize time format
+            time_part = time_part.replace('p.m.', 'PM').replace('a.m.', 'AM')
+            time_part = time_part.replace('p. m.', 'PM').replace('a. m.', 'AM')
+            time_part = time_part.replace('pm', 'PM').replace('am', 'AM')
+            time_part = time_part.replace('p.m', 'PM').replace('a.m', 'AM')
+            
+            logger.info(f"Successfully extracted day/date/time format - day: '{day_of_week}', date: '{date_part}', time: '{time_part}'")
+            return date_part, time_part, None
+        
         # Check for format like "Thu Mar 6 7:30 PM" with optional additional info in parentheses
         abbreviated_day_pattern = r'([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2})\s+(\d{1,2}:\d{2}\s*[APap][Mm])(?:\s*\(.*?\))?'
         abbreviated_day_match = re.search(abbreviated_day_pattern, input_str, re.IGNORECASE)
@@ -148,6 +167,27 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
     """Parse date and time strings into Django's expected format.
     Returns a tuple of (date, time) strings."""
     logger.info(f"Parsing date: '{date_str}' and time: '{time_str}'")
+    
+    # Check for format - "Day / Month Day, Year / Time"
+    day_slash_date_slash_time_pattern = r'([A-Za-z]+day)\s+/\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})\s+/\s+(\d{1,2}:\d{2}\s*[pPaA]\.?[mM]\.?)'
+    day_slash_date_slash_time_match = re.search(day_slash_date_slash_time_pattern, date_str, re.IGNORECASE)
+    
+    if day_slash_date_slash_time_match:
+        # Extract just the date and time parts
+        date_part = day_slash_date_slash_time_match.group(2)  # e.g., "March 4, 2025"
+        time_part = day_slash_date_slash_time_match.group(3)  # e.g., "6:30 p.m."
+        
+        # Standardize time format
+        time_part = time_part.replace('p.m.', 'PM').replace('a.m.', 'AM')
+        time_part = time_part.replace('p. m.', 'PM').replace('a. m.', 'AM')
+        time_part = time_part.replace('pm', 'PM').replace('am', 'AM')
+        time_part = time_part.replace('p.m', 'PM').replace('a.m', 'AM')
+        
+        logger.info(f"Detected slash-separated format - extracted date: '{date_part}', time: '{time_part}'")
+        
+        # Set these as our new date and time strings
+        date_str = date_part
+        time_str = time_part
     
     # If date_str contains both date and time, extract them
     if date_str and not time_str:
