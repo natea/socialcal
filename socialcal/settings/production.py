@@ -118,7 +118,27 @@ SESSION_CACHE_ALIAS = 'default'
 
 # Application definition
 INSTALLED_APPS = [
-    # Same as in base.py
+    # Django built-in apps
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'django.contrib.sites',
+    
+    # Third party apps
+    'rest_framework',
+    'widget_tweaks',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    
+    # Local apps
+    'core.apps.CoreConfig',
+    'events.apps.EventsConfig',
+    'profiles.apps.ProfilesConfig',
 ]
 
 # Middleware configuration - ensure WhiteNoise is properly positioned
