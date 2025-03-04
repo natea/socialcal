@@ -38,6 +38,12 @@
                         <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
                     {% endif %}
                     
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            By signing up, you agree to our <a href="{% url 'core:terms_of_service' %}" target="_blank">Terms of Service</a> and <a href="{% url 'core:privacy' %}" target="_blank">Privacy Policy</a>.
+                        </small>
+                    </div>
+                    
                     <button class="btn btn-primary w-100" type="submit">Sign Up</button>
                 </form>
                 
