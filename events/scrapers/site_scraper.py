@@ -86,8 +86,7 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
     """
     # Use the API key from the settings if not provided
     if not api_key:
-        api_key = getattr(settings, 'GEMINI_API_KEY', os.environ.get('GEMINI_API_KEY'))
-    
+        api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', None)
     if not api_key:
         raise ValueError("No API key provided for schema generation")
     
