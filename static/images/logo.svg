@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="200px" height="50px" viewBox="0 0 200 50" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <text font-family="Arial-BoldMT, Arial" font-size="24" font-weight="bold" fill="#4285F4">
+            <tspan x="10" y="35">SocialCal</tspan>
+        </text>
+    </g>
+</svg>

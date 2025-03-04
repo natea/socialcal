@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Terms of Service - SocialCal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1 class="mb-4">Terms of Service</h1>
+            <p class="text-muted">Last updated: {% now "F j, Y" %}</p>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">1. Introduction</h2>
+                    <p>Welcome to SocialCal. These Terms of Service ("Terms") govern your access to and use of the SocialCal website, services, and applications (collectively, the "Service"). By accessing or using the Service, you agree to be bound by these Terms. If you do not agree to these Terms, you may not access or use the Service.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">2. Definitions</h2>
+                    <p>Throughout these Terms, we use certain defined terms:</p>
+                    <ul>
+                        <li><strong>"SocialCal"</strong> (or "we," "our," or "us") refers to the company operating the Service.</li>
+                        <li><strong>"Service"</strong> refers to the SocialCal website, applications, and related services.</li>
+                        <li><strong>"User"</strong> (or "you" or "your") refers to any individual or entity that accesses or uses the Service.</li>
+                        <li><strong>"Content"</strong> refers to any information, text, graphics, photos, or other materials uploaded, downloaded, or appearing on the Service.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">3. Account Registration and Security</h2>
+                    <p>To use certain features of the Service, you may need to create an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete. You are responsible for safeguarding your password and for all activities that occur under your account. You agree to notify us immediately of any unauthorized use of your account.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">4. User Content and Conduct</h2>
+                    <p>You are responsible for all Content that you post, upload, or otherwise make available via the Service. By submitting Content to the Service, you grant us a worldwide, non-exclusive, royalty-free license to use, copy, reproduce, process, adapt, modify, publish, transmit, display, and distribute such Content.</p>
+                    <p>You agree not to use the Service to:</p>
+                    <ul>
+                        <li>Violate any applicable law or regulation.</li>
+                        <li>Infringe the intellectual property rights of others.</li>
+                        <li>Harass, abuse, or harm another person.</li>
+                        <li>Send spam or other unsolicited messages.</li>
+                        <li>Interfere with or disrupt the Service or servers or networks connected to the Service.</li>
+                        <li>Collect or store personal data about other users without their consent.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">5. Intellectual Property Rights</h2>
+                    <p>The Service and its original content, features, and functionality are and will remain the exclusive property of SocialCal and its licensors. The Service is protected by copyright, trademark, and other laws of both the United States and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of SocialCal.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">6. Privacy</h2>
+                    <p>Our Privacy Policy, available at <a href="{% url 'core:privacy' %}">https://socialcal.io/privacy/</a>, describes how we collect, use, and share information about you when you use our Service. By using the Service, you agree to the collection, use, and sharing of your information as described in the Privacy Policy.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">7. Termination</h2>
+                    <p>We may terminate or suspend your account and bar access to the Service immediately, without prior notice or liability, under our sole discretion, for any reason whatsoever and without limitation, including but not limited to a breach of the Terms.</p>
+                    <p>If you wish to terminate your account, you may simply discontinue using the Service or contact us to request account deletion.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">8. Limitation of Liability</h2>
+                    <p>In no event shall SocialCal, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">9. Disclaimer</h2>
+                    <p>Your use of the Service is at your sole risk. The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The Service is provided without warranties of any kind, whether express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, non-infringement or course of performance.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">10. Governing Law</h2>
+                    <p>These Terms shall be governed and construed in accordance with the laws of the United States, without regard to its conflict of law provisions.</p>
+                    <p>Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights. If any provision of these Terms is held to be invalid or unenforceable by a court, the remaining provisions of these Terms will remain in effect.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">11. Changes to Terms</h2>
+                    <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion.</p>
+                    <p>By continuing to access or use our Service after any revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, you are no longer authorized to use the Service.</p>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">12. Contact Us</h2>
+                    <p>If you have any questions about these Terms, please contact us:</p>
+                    <ul>
+                        <li>By email: support@socialcal.io</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
