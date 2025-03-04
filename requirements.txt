@@ -30,7 +30,7 @@ firecrawl-py
 #trafilatura==1.9.0
 #unstructured
 requests
-crawl4ai==0.4.247
+crawl4ai==0.4.3b3
 playwright>=1.49.0
 
 # Background Tasks
