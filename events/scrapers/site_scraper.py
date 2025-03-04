@@ -143,6 +143,7 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
             - AVOID selecting base64-encoded images. Look for real image URLs that start with http:// or https://
             - If there are multiple image sources available, prefer the one with the highest resolution or quality.
             - IMPORTANT: Some websites use CSS background-image in style attributes instead of img tags. Look for elements with style attributes containing "background-image: url(...)" and extract those URLs.
+            - IMPORTANT: Check for both "src" and "data-src" attributes on image elements. Some sites use lazy loading and store the real image URL in data-src.
             
             Return ONLY a JSON object with field names as keys and CSS selectors as values.
             For example:
@@ -160,7 +161,8 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
             If you need to extract attributes, use the following format:
             {
               "url": {"selector": ".event-card a", "attribute": "href"},
-              "image_url": {"selector": ".event-card img", "attribute": "src"}
+              "image_url": {"selector": ".event-card img", "attribute": "src"},
+              "data_image_url": {"selector": ".event-card img", "attribute": "data-src"}
             }
             
             For background images in style attributes, use:
@@ -211,6 +213,29 @@ async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
     crawler = AsyncWebCrawler()
     
     try:
+        # Add a data-src selector for image URLs if it doesn't exist already
+        # This will be processed alongside the normal image_url field
+        if "image_url" in css_schema and "data_image_url" not in css_schema:
+            # If image_url is a simple selector string
+            if isinstance(css_schema["image_url"], str):
+                # Create a selector based on the original but with data-src attribute
+                base_selector = css_schema["image_url"].replace("[src]", "")
+                if "[src]" not in css_schema["image_url"]:
+                    # If no attribute specified, add the whole selector
+                    css_schema["data_image_url"] = f"{base_selector}[data-src]"
+                else:
+                    # If src attribute was specifically targeted, create a parallel data-src selector
+                    css_schema["data_image_url"] = base_selector + "[data-src]"
+            # If image_url is a complex selector with attribute specification
+            elif isinstance(css_schema["image_url"], dict) and "selector" in css_schema["image_url"]:
+                # Copy the selector but change the attribute to data-src
+                css_schema["data_image_url"] = {
+                    "selector": css_schema["image_url"]["selector"],
+                    "attribute": "data-src"
+                }
+            
+            logger.info(f"Added data-src selector to schema: {json.dumps(css_schema, indent=2)}")
+        
         # Use the schema directly without any conversion - this is how crawl4ai_demo.py works
         extraction_strategy = JsonCssExtractionStrategy(schema=css_schema)
         

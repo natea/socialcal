@@ -162,4 +162,56 @@ class TestSiteScraper(TestCase):
         self.assertEqual(result[0]["start_time"], "8:00 PM")
         self.assertEqual(result[0]["location"], "Location 1")
         self.assertEqual(result[0]["url"], "https://example.com/event1")
-        self.assertEqual(result[0]["image_url"], "https://example.com/image1.jpg") 
+        self.assertEqual(result[0]["image_url"], "https://example.com/image1.jpg")
+
+    @pytest.mark.asyncio
+    @patch('events.scrapers.site_scraper.AsyncWebCrawler')
+    async def test_data_src_image_extraction(self, mock_crawler_class):
+        """Test the extraction of data-src images when src is empty."""
+        # Create a mock crawler instance
+        mock_crawler = AsyncMock()
+        mock_crawler_class.return_value = mock_crawler
+        
+        # Mock the context manager
+        mock_crawler.__aenter__.return_value = mock_crawler
+        mock_crawler.__aexit__.return_value = None
+        
+        # Mock the arun method
+        mock_result = MagicMock()
+        mock_result.success = True
+        # Return data with empty image_url but a data_image_url
+        mock_result.extracted_content = json.dumps([
+            {
+                "title": "Event 1",
+                "date": "April 12, 2025 at 8:00 PM",
+                "location": "Location 1",
+                "url": "/event1",
+                "image_url": "",  # Empty src
+                "data_image_url": "/real-image1.jpg"  # data-src value
+            }
+        ])
+        mock_crawler.arun.return_value = mock_result
+        
+        # Create a test schema with image_url selector but no data_image_url
+        # Our code should automatically add the data_image_url selector
+        test_schema = {
+            "baseSelector": ".event-container",
+            "title": ".event-title",
+            "date": ".event-date",
+            "location": ".event-location",
+            "url": {"selector": "a.event-link", "attribute": "href"},
+            "image_url": {"selector": "img.event-image", "attribute": "src"}
+        }
+        
+        # Call the function
+        result = await run_css_schema("https://example.com", test_schema)
+        
+        # Check the result - image_url should use the data_image_url value
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["title"], "Event 1")
+        self.assertEqual(result[0]["image_url"], "https://example.com/real-image1.jpg")
+        
+        # Also verify that data_image_url was added to the schema
+        self.assertIn("data_image_url", test_schema)
+        self.assertEqual(test_schema["data_image_url"]["selector"], "img.event-image")
+        self.assertEqual(test_schema["data_image_url"]["attribute"], "data-src") 
