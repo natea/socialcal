@@ -1,16 +1,131 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Welcome to SocialCal{% endblock %}
 
+{% block extra_css %}
+<style>
+    .hero-section {
+        background-color: #f8f9fa;
+        padding: 4rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0.5rem;
+    }
+    
+    .benefits-section {
+        padding: 3rem 0;
+    }
+    
+    .benefit-card {
+        padding: 2rem;
+        border-radius: 0.5rem;
+        height: 100%;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.125);
+    }
+    
+    .benefit-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .benefit-icon {
+        font-size: 3rem;
+        margin-bottom: 1.5rem;
+        color: #6c5ce7;
+    }
+    
+    .cta-section {
+        background-color: #6c5ce7;
+        color: white;
+        padding: 3rem 0;
+        border-radius: 0.5rem;
+        margin: 2rem 0;
+    }
+    
+    .cta-btn {
+        padding: 0.8rem 2rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="text-center">
-    <h1>Welcome to SocialCal</h1>
-    <p class="lead">Organize your social events and share your calendar with friends.</p>
-    {% if not user.is_authenticated %}
-        <div class="mt-4">
-            <a href="{% url 'account_signup' %}" class="btn btn-primary me-2">Sign Up</a>
-            <a href="{% url 'account_login' %}" class="btn btn-outline-primary">Login</a>
+<!-- Hero Section -->
+<div class="hero-section text-center">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-4">Never Miss Another Event</h1>
+        <p class="lead mb-5">SocialCal helps you discover events, manage your social calendar, and coordinate with friends all in one place.</p>
+    </div>
+</div>
+
+<!-- Benefits Section -->
+<div class="benefits-section">
+    <div class="container">
+        <div class="row g-4">
+            <!-- Benefit 1 -->
+            <div class="col-md-4">
+                <div class="benefit-card text-center">
+                    <i class="bi bi-calendar-event benefit-icon"></i>
+                    <h3>Never Miss an Event Again!</h3>
+                    <p class="text-muted">Aggregate events from venues you care about into a personalized calendar that keeps you in the loop.</p>
+                </div>
+            </div>
+            
+            <!-- Benefit 2 -->
+            <div class="col-md-4">
+                <div class="benefit-card text-center">
+                    <i class="bi bi-calendar2-check benefit-icon"></i>
+                    <h3>See What Events You Can Go To</h3>
+                    <p class="text-muted">Overlay events on top of your personal calendar to instantly see your availability and plan accordingly.</p>
+                </div>
+            </div>
+            
+            <!-- Benefit 3 -->
+            <div class="col-md-4">
+                <div class="benefit-card text-center">
+                    <i class="bi bi-people benefit-icon"></i>
+                    <h3>Make Plans with Friends</h3>
+                    <p class="text-muted">Create circles of friends to invite to events, and see what your friends are going to attend.</p>
+                </div>
+            </div>
         </div>
-    {% endif %}
+    </div>
+</div>
+
+<!-- Call to Action Section -->
+<div class="cta-section text-center">
+    <div class="container">
+        <h2 class="mb-4">Ready to Simplify Your Social Life?</h2>
+        <p class="lead mb-4">Join SocialCal today and start discovering events that matter to you!</p>
+        {% if user.is_authenticated %}
+            <a href="{% url 'events:import' %}" class="btn btn-light cta-btn">Get Started!</a>
+        {% else %}
+            <a href="{% url 'account_login' %}?next={% url 'events:import' %}" class="btn btn-light cta-btn">Get Started!</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Additional Features -->
+<div class="container mb-5">
+    <div class="row g-4 mt-2">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title"><i class="bi bi-stars me-2"></i>Discover Local Events</h4>
+                    <p class="card-text">Find events happening in your area from concert venues, theaters, colleges, and more!</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title"><i class="bi bi-share me-2"></i>Share Your Plans</h4>
+                    <p class="card-text">Easily share events with friends or on social media to coordinate your outings together.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %} 

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Site Scrapers{% endblock %}
+{% block title %}Import Events{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Site Scrapers</h1>
+        <h1>Import Events from Websites</h1>
         <a href="{% url 'events:scraper_create' %}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Add New Scraper
         </a>
