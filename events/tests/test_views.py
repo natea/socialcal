@@ -667,4 +667,4 @@ class TestEventViews:
         
         # Check that the JavaScript for handling webcal links is included
         assert 'document.querySelectorAll(\'a[data-protocol="webcal"]\')' in content
-        assert 'link.href = link.href.replace(/^https?:\/\//, \'webcal://\');' in content
+        assert '\'webcal://\' + url.host + url.pathname + url.search + url.hash' in content

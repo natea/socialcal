@@ -1,0 +1,633 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ scraper.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2>{{ scraper.name }}</h2>
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'events:scraper_edit' pk=scraper.pk %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-outline-info test-scraper" data-scraper-id="{{ scraper.pk }}">
+                            <i class="fas fa-vial"></i> Test
+                        </button>
+                        <button type="button" class="btn btn-outline-success import-events" data-scraper-id="{{ scraper.pk }}">
+                            <i class="fas fa-file-import"></i> Import Events
+                        </button>
+                        <a href="{% url 'events:scraper_delete' pk=scraper.pk %}" class="btn btn-outline-danger">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                    <div class="messages mb-4">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h4>Details</h4>
+                            <table class="table">
+                                <tr>
+                                    <th>URL</th>
+                                    <td>
+                                        <a href="{{ scraper.url }}" target="_blank" rel="noopener noreferrer">
+                                            {{ scraper.url }}
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td>
+                                        {% if scraper.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Last Tested</th>
+                                    <td>
+                                        {% if scraper.last_tested %}
+                                        {{ scraper.last_tested|date:"M d, Y H:i" }}
+                                        {% else %}
+                                        Never
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Created</th>
+                                    <td>{{ scraper.created_at|date:"M d, Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Updated</th>
+                                    <td>{{ scraper.updated_at|date:"M d, Y H:i" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Description</h4>
+                            <div class="card">
+                                <div class="card-body">
+                                    {% if scraper.description %}
+                                    <p>{{ scraper.description|linebreaks }}</p>
+                                    {% else %}
+                                    <p class="text-muted">No description provided.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>CSS Schema</h4>
+                            <div class="card">
+                                <div class="card-body">
+                                    {% if scraper.css_schema %}
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span>Current CSS Schema:</span>
+                                        <button type="button" class="btn btn-sm btn-outline-primary regenerate-schema" data-scraper-id="{{ scraper.pk }}">
+                                            <i class="fas fa-sync-alt"></i> Regenerate Schema
+                                        </button>
+                                    </div>
+                                    <pre class="bg-light p-3 rounded"><code id="css-schema">{{ scraper.css_schema|pprint }}</code></pre>
+                                    {% else %}
+                                    <p class="text-muted">No CSS schema defined. <a href="{% url 'events:scraper_edit' pk=scraper.pk %}">Edit this scraper</a> to add one or 
+                                    <button type="button" class="btn btn-sm btn-outline-primary regenerate-schema" data-scraper-id="{{ scraper.pk }}">
+                                        <i class="fas fa-sync-alt"></i> Generate Schema
+                                    </button>
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if scraper.test_results and scraper.test_results.events %}
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <h4>Last Test Results</h4>
+                            <p>
+                                <small class="text-muted">
+                                    Tested on {{ scraper.last_tested|date:"M d, Y H:i" }} - 
+                                    Found {{ scraper.test_results.events_count }} events
+                                </small>
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Date</th>
+                                            <th>Location</th>
+                                            <th>URL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for event in scraper.test_results.events %}
+                                        <tr>
+                                            <td>{{ event.title|default:"N/A" }}</td>
+                                            <td>{{ event.date|default:"N/A" }} {{ event.start_time|default:"" }}</td>
+                                            <td>{{ event.location|default:"N/A" }}</td>
+                                            <td>
+                                                {% if event.url %}
+                                                <a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">Link</a>
+                                                {% else %}
+                                                N/A
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Results Modal -->
+<div class="modal fade" id="testResultsModal" tabindex="-1" aria-labelledby="testResultsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testResultsModalLabel">Test Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="testStatus" class="alert alert-info">
+                    Starting test...
+                </div>
+                <div id="testResults" class="d-none">
+                    <h5>Extracted Events</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Date</th>
+                                    <th>Location</th>
+                                    <th>URL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eventsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary d-none" id="importEventsBtn">Import Events</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schema Generation Status Modal -->
+<div class="modal fade" id="schemaGenerationModal" tabindex="-1" aria-labelledby="schemaGenerationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="schemaGenerationModalLabel">Generating CSS Schema</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="schemaStatus" class="alert alert-info">
+                    Generating CSS schema...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include the import progress modal -->
+{% include "events/import_progress_modal.html" %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Format the CSS schema JSON
+        const cssSchemaElement = document.getElementById('css-schema');
+        if (cssSchemaElement && cssSchemaElement.textContent) {
+            try {
+                const cssSchema = JSON.parse(cssSchemaElement.textContent.replace(/'/g, '"'));
+                cssSchemaElement.textContent = JSON.stringify(cssSchema, null, 2);
+            } catch (e) {
+                console.error('Error formatting CSS schema:', e);
+            }
+        }
+        
+        // Test scraper functionality
+        document.querySelectorAll('.test-scraper').forEach(button => {
+            button.addEventListener('click', function() {
+                const scraperId = this.getAttribute('data-scraper-id');
+                testScraper(scraperId);
+            });
+        });
+
+        // Import events functionality
+        document.querySelectorAll('.import-events').forEach(button => {
+            button.addEventListener('click', function() {
+                const scraperId = this.getAttribute('data-scraper-id');
+                importEvents(scraperId);
+            });
+        });
+
+        // Import button in modal
+        document.getElementById('importEventsBtn').addEventListener('click', function() {
+            const scraperId = this.getAttribute('data-scraper-id');
+            importEvents(scraperId);
+        });
+        
+        // Regenerate schema functionality
+        document.querySelectorAll('.regenerate-schema').forEach(button => {
+            button.addEventListener('click', function() {
+                const scraperId = this.getAttribute('data-scraper-id');
+                regenerateSchema(scraperId);
+            });
+        });
+        
+        // Check for schema generation job ID in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const schemaJobId = urlParams.get('schema_job_id');
+        
+        if (schemaJobId) {
+            // Show the schema generation modal
+            const modal = new bootstrap.Modal(document.getElementById('schemaGenerationModal'));
+            modal.show();
+            
+            // Start checking the status
+            checkSchemaGenerationStatus(schemaJobId);
+        }
+    });
+
+    function testScraper(scraperId) {
+        // Reset modal
+        const modal = new bootstrap.Modal(document.getElementById('testResultsModal'));
+        const progressBar = document.querySelector('#testResultsModal .progress-bar');
+        const statusDiv = document.getElementById('testStatus');
+        const resultsDiv = document.getElementById('testResults');
+        const eventsTableBody = document.getElementById('eventsTableBody');
+        const importBtn = document.getElementById('importEventsBtn');
+        
+        progressBar.style.width = '0%';
+        statusDiv.className = 'alert alert-info';
+        statusDiv.textContent = 'Starting test...';
+        resultsDiv.classList.add('d-none');
+        eventsTableBody.innerHTML = '';
+        importBtn.classList.add('d-none');
+        importBtn.setAttribute('data-scraper-id', scraperId);
+        
+        modal.show();
+        
+        // Start the test
+        fetch(`/events/scrapers/${scraperId}/test/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'started') {
+                checkTestStatus(data.job_id);
+            } else {
+                statusDiv.className = 'alert alert-danger';
+                statusDiv.textContent = 'Failed to start test';
+            }
+        })
+        .catch(error => {
+            statusDiv.className = 'alert alert-danger';
+            statusDiv.textContent = `Error: ${error.message}`;
+        });
+    }
+
+    function checkTestStatus(jobId) {
+        const progressBar = document.querySelector('#testResultsModal .progress-bar');
+        const statusDiv = document.getElementById('testStatus');
+        const resultsDiv = document.getElementById('testResults');
+        const eventsTableBody = document.getElementById('eventsTableBody');
+        const importBtn = document.getElementById('importEventsBtn');
+        
+        fetch(`/events/scrapers/test/status/${jobId}/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update progress
+            progressBar.style.width = `${data.progress}%`;
+            statusDiv.textContent = data.message;
+            
+            if (data.status === 'completed') {
+                // Test completed successfully
+                statusDiv.className = 'alert alert-success';
+                
+                // Display results
+                if (data.events && data.events.length > 0) {
+                    resultsDiv.classList.remove('d-none');
+                    importBtn.classList.remove('d-none');
+                    
+                    // Populate table
+                    eventsTableBody.innerHTML = '';
+                    data.events.forEach(event => {
+                        const row = document.createElement('tr');
+                        
+                        const titleCell = document.createElement('td');
+                        titleCell.textContent = event.title || 'N/A';
+                        row.appendChild(titleCell);
+                        
+                        const dateCell = document.createElement('td');
+                        dateCell.textContent = `${event.date || 'N/A'} ${event.start_time || ''}`;
+                        row.appendChild(dateCell);
+                        
+                        const locationCell = document.createElement('td');
+                        locationCell.textContent = event.location || 'N/A';
+                        row.appendChild(locationCell);
+                        
+                        const urlCell = document.createElement('td');
+                        if (event.url) {
+                            const link = document.createElement('a');
+                            link.href = event.url;
+                            link.target = '_blank';
+                            link.textContent = 'Link';
+                            urlCell.appendChild(link);
+                        } else {
+                            urlCell.textContent = 'N/A';
+                        }
+                        row.appendChild(urlCell);
+                        
+                        eventsTableBody.appendChild(row);
+                    });
+                } else {
+                    statusDiv.textContent = 'No events found';
+                }
+            } else if (data.status === 'error') {
+                // Test failed
+                statusDiv.className = 'alert alert-danger';
+            } else {
+                // Test still running, check again in 1 second
+                setTimeout(() => checkTestStatus(jobId), 1000);
+            }
+        })
+        .catch(error => {
+            statusDiv.className = 'alert alert-danger';
+            statusDiv.textContent = `Error: ${error.message}`;
+        });
+    }
+
+    function importEvents(scraperId) {
+        if (!confirm('Are you sure you want to import events from this scraper?')) {
+            return;
+        }
+        
+        // Show the progress modal
+        const modal = new bootstrap.Modal(document.getElementById('importProgressModal'));
+        modal.show();
+        
+        // Reset the modal
+        document.querySelector('#importProgressModal .progress-bar').style.width = '0%';
+        document.getElementById('importStatus').className = 'alert alert-info';
+        document.getElementById('importStatus').textContent = 'Starting import...';
+        document.getElementById('importDetails').classList.add('d-none');
+        document.getElementById('viewEventsBtn').classList.add('d-none');
+        document.getElementById('eventsContainer').innerHTML = '';
+        
+        // Start the import
+        fetch(`/events/scrapers/${scraperId}/import/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'started') {
+                checkImportStatus(data.job_id);
+            } else {
+                document.getElementById('importStatus').className = 'alert alert-danger';
+                document.getElementById('importStatus').textContent = 'Failed to start import';
+            }
+        })
+        .catch(error => {
+            document.getElementById('importStatus').className = 'alert alert-danger';
+            document.getElementById('importStatus').textContent = `Error: ${error.message}`;
+        });
+    }
+
+    function checkImportStatus(jobId) {
+        fetch(`/events/import/status/${jobId}/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update overall progress
+            const progressBar = document.querySelector('#importProgressModal .progress-bar');
+            if (data.progress && typeof data.progress === 'number') {
+                progressBar.style.width = `${data.progress}%`;
+            }
+            
+            // Update status message
+            document.getElementById('importStatus').textContent = data.message || 'Processing...';
+            
+            // Show detailed progress if available
+            if (data.status_message) {
+                document.getElementById('importDetails').classList.remove('d-none');
+                
+                // Update scraping progress
+                const scrapingProgress = document.getElementById('scrapingProgress');
+                if (data.progress && typeof data.progress === 'object' && data.progress.scraping) {
+                    scrapingProgress.style.width = `${data.progress.scraping}%`;
+                }
+                
+                // Update processing progress
+                const processingProgress = document.getElementById('processingProgress');
+                if (data.progress && typeof data.progress === 'object' && data.progress.processing) {
+                    processingProgress.style.width = `${data.progress.processing}%`;
+                }
+                
+                // Update status messages
+                document.getElementById('scrapingStatus').textContent = data.status_message.scraping || 'Initializing...';
+                document.getElementById('processingStatus').textContent = data.status_message.processing || 'Waiting...';
+            }
+            
+            // Update statistics
+            if (data.stats) {
+                document.getElementById('eventsFound').textContent = data.stats.found || 0;
+                document.getElementById('eventsCreated').textContent = data.stats.created || 0;
+                document.getElementById('eventsUpdated').textContent = data.stats.updated || 0;
+            }
+            
+            // Update events list
+            if (data.events && data.events.length > 0) {
+                updateEventsList(data.events);
+            }
+            
+            if (data.status === 'completed') {
+                // Import completed successfully
+                document.getElementById('importStatus').className = 'alert alert-success';
+                document.getElementById('viewEventsBtn').classList.remove('d-none');
+                
+                // Update progress bars to 100%
+                progressBar.style.width = '100%';
+                if (document.getElementById('scrapingProgress')) {
+                    document.getElementById('scrapingProgress').style.width = '100%';
+                }
+                if (document.getElementById('processingProgress')) {
+                    document.getElementById('processingProgress').style.width = '100%';
+                }
+            } else if (data.status === 'error') {
+                // Import failed
+                document.getElementById('importStatus').className = 'alert alert-danger';
+            } else {
+                // Import still running, check again in 1 second
+                setTimeout(() => checkImportStatus(jobId), 1000);
+            }
+        })
+        .catch(error => {
+            document.getElementById('importStatus').className = 'alert alert-danger';
+            document.getElementById('importStatus').textContent = `Error: ${error.message}`;
+        });
+    }
+    
+    function updateEventsList(events) {
+        const eventsContainer = document.getElementById('eventsContainer');
+        
+        // Add new events
+        events.forEach(event => {
+            // Check if event already exists in the list
+            if (!document.getElementById(`event-${event.id}`)) {
+                const eventElement = document.createElement('div');
+                eventElement.id = `event-${event.id}`;
+                eventElement.className = 'list-group-item list-group-item-action';
+                eventElement.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">${event.title || 'Untitled Event'}</h5>
+                        <small>${event.start_time || 'No time specified'}</small>
+                    </div>
+                    <p class="mb-1">${event.venue_name || 'No venue specified'}</p>
+                `;
+                eventsContainer.appendChild(eventElement);
+                
+                // Scroll to the bottom to show the newest event
+                eventsContainer.scrollTop = eventsContainer.scrollHeight;
+            }
+        });
+    }
+
+    function checkSchemaGenerationStatus(jobId) {
+        const progressBar = document.querySelector('#schemaGenerationModal .progress-bar');
+        const statusDiv = document.getElementById('schemaStatus');
+        
+        fetch(`/events/scrapers/schema/status/${jobId}/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update progress
+            progressBar.style.width = `${data.progress}%`;
+            statusDiv.textContent = data.message;
+            
+            if (data.status === 'completed') {
+                // Schema generation completed successfully
+                statusDiv.className = 'alert alert-success';
+                statusDiv.textContent = 'CSS schema generated successfully. Refreshing page...';
+                
+                // Refresh the page after a short delay to show the success message
+                setTimeout(() => {
+                    window.location.href = window.location.pathname;
+                }, 1500);
+            } else if (data.status === 'error') {
+                // Schema generation failed
+                statusDiv.className = 'alert alert-danger';
+            } else {
+                // Schema generation still running, check again in 1 second
+                setTimeout(() => checkSchemaGenerationStatus(jobId), 1000);
+            }
+        })
+        .catch(error => {
+            statusDiv.className = 'alert alert-danger';
+            statusDiv.textContent = `Error: ${error.message}`;
+        });
+    }
+
+    function regenerateSchema(scraperId) {
+        if (!confirm('Are you sure you want to regenerate the CSS schema? This will replace the current schema.')) {
+            return;
+        }
+        
+        // Show the schema generation modal
+        const modal = new bootstrap.Modal(document.getElementById('schemaGenerationModal'));
+        const progressBar = document.querySelector('#schemaGenerationModal .progress-bar');
+        const statusDiv = document.getElementById('schemaStatus');
+        
+        progressBar.style.width = '0%';
+        statusDiv.className = 'alert alert-info';
+        statusDiv.textContent = 'Starting schema generation...';
+        
+        modal.show();
+        
+        // Start the schema generation
+        fetch(`/events/scrapers/${scraperId}/regenerate-schema/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'started') {
+                checkSchemaGenerationStatus(data.job_id);
+            } else {
+                statusDiv.className = 'alert alert-danger';
+                statusDiv.textContent = 'Failed to start schema generation';
+            }
+        })
+        .catch(error => {
+            statusDiv.className = 'alert alert-danger';
+            statusDiv.textContent = `Error: ${error.message}`;
+        });
+    }
+</script>
+{% endblock %} 

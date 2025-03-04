@@ -1,9 +1,11 @@
 from django import forms
-from .models import Event
+from .models import Event, SiteScraper
 import pytz
 from django.conf import settings
 from django.utils import timezone
 from .utils.spotify import SpotifyAPI
+import json
+from django.core.exceptions import ValidationError
 
 class EventForm(forms.ModelForm):
     timezone = forms.ChoiceField(
@@ -133,3 +135,52 @@ class EventForm(forms.ModelForm):
             self.add_error('start_time', 'Start time must be before end time')
 
         return cleaned_data 
+
+class SiteScraperForm(forms.ModelForm):
+    """Form for creating and editing site scrapers."""
+    
+    css_schema_json = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 10, 'class': 'form-control'}),
+        required=False,
+        help_text="JSON schema for CSS selectors. Will be auto-generated if left blank."
+    )
+    
+    class Meta:
+        model = SiteScraper
+        fields = ['name', 'url', 'description', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'url': forms.URLInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # If we're editing an existing scraper, populate the css_schema_json field
+        if self.instance.pk and self.instance.css_schema:
+            self.fields['css_schema_json'].initial = json.dumps(self.instance.css_schema, indent=2)
+    
+    def clean_css_schema_json(self):
+        """Validate that the CSS schema is valid JSON."""
+        css_schema_json = self.cleaned_data.get('css_schema_json')
+        if css_schema_json:
+            try:
+                return json.loads(css_schema_json)
+            except json.JSONDecodeError:
+                raise ValidationError("Invalid JSON format")
+        return {}
+    
+    def save(self, commit=True):
+        """Save the form and update the css_schema field."""
+        scraper = super().save(commit=False)
+        
+        # Update the css_schema field with the parsed JSON
+        css_schema_json = self.cleaned_data.get('css_schema_json')
+        if css_schema_json:
+            scraper.css_schema = css_schema_json
+        
+        if commit:
+            scraper.save()
+        
+        return scraper 

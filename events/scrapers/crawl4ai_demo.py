@@ -56,10 +56,10 @@ async def demo_json_schema_generation():
     Demonstrates how to use Crawl4AI to generate a JSON schema for extracting event information.
     """
     # Define the URL to crawl
-    #target_url = "https://tockify.com/beehive/agenda"
+    target_url = "https://tockify.com/beehive/agenda"
     #target_url = "https://www.ticketweb.com/venue/regattabar-cambridge-ma/748814?pl=regatta"
     #target_url = "https://lilypadinman.com/events"
-    target_url = "https://www.themadmonkfish.com/jazz-schedule/"
+    #target_url = "https://www.themadmonkfish.com/jazz-schedule/"
     
     # Define a post-extraction hook to clean up the data
     def extraction_hook(extracted_content, context):

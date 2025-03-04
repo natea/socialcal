@@ -56,3 +56,15 @@ env/
 
 # Render
 .render/
+
+# Sample files
+sample.html
+website_html_content.html
+luma_boston_sample.html
+db.sqlite3.backup-2025-03-03
+tockify_debug_logs.txt
+tockify_full_html.txt
+tockify_html_sample.txt
+events/scrapers/javascript_to_wait.js
+debug_tockify.py
+events/scrapers/revert_site_scraper.py

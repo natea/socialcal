@@ -35,6 +35,9 @@ class TestGenericCrawl4AIScraper(unittest.TestCase):
 
     def test_parse_datetime_without_year(self):
         """Test parsing dates without explicit year"""
+        # The test is using a mocked datetime set to January 24, 2025
+        # We need to use this mocked date for our test cases
+        
         test_cases = [
             # Current month
             ("01/24", "8:00 PM", "2025-01-24", "20:00:00"),
@@ -45,7 +48,7 @@ class TestGenericCrawl4AIScraper(unittest.TestCase):
             ("March 15", "8:00 PM", "2025-03-15", "20:00:00"),
             
             # Next year (when date would be in the past)
-            ("01/15", "8:00 PM", "2026-01-15", "20:00:00"),  # More than 1 month ago
+            ("01/15", "8:00 PM", "2026-01-15", "20:00:00"),  # More than 1 week ago
             ("December 15", "8:00 PM", "2025-12-15", "20:00:00"),
         ]
         

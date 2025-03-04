@@ -2,8 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from .models import Event
-from .forms import EventForm
+from .models import Event, SiteScraper
+from .forms import EventForm, SiteScraperForm
 from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
 from .scrapers.ical_scraper import ICalScraper
 from .utils.spotify import SpotifyAPI
@@ -192,6 +192,9 @@ def event_import(request):
     return async_to_sync(_event_import)(request)
 
 async def _event_import(request):
+    # Get the user's site scrapers for the template
+    site_scrapers = await sync_to_async(list)(SiteScraper.objects.filter(user=request.user, is_active=True))
+    
     if request.method == 'POST':
         scraper_type = request.POST.get('scraper_type')
         source_url = request.POST.get('source_url')
@@ -386,7 +389,7 @@ async def _event_import(request):
                 'message': str(e)
             }, status=500)
 
-    return render(request, 'events/import.html')
+    return render(request, 'events/event_import.html', {'site_scrapers': site_scrapers})
 
 @login_required
 def event_export(request):
@@ -798,3 +801,583 @@ def export_ical(request, events=None):
     response['X-Webcal-URL'] = webcal_url
     
     return response
+
+# Site Scraper Views
+@login_required
+def scraper_list(request):
+    """List all site scrapers for the current user."""
+    scrapers = SiteScraper.objects.filter(user=request.user).order_by('name')
+    return render(request, 'events/scraper_list.html', {'scrapers': scrapers})
+
+@login_required
+def scraper_create(request):
+    """Create a new site scraper."""
+    if request.method == 'POST':
+        form = SiteScraperForm(request.POST)
+        if form.is_valid():
+            scraper = form.save(commit=False)
+            scraper.user = request.user
+            
+            # If no CSS schema was provided, generate one
+            if not scraper.css_schema:
+                try:
+                    # Run the schema generation in a background thread
+                    job_id = str(time.time())
+                    set_job_status(job_id, {
+                        'status': 'started',
+                        'message': 'Generating CSS schema...',
+                        'progress': 0
+                    })
+                    
+                    # Save the scraper first so we have an ID
+                    scraper.save()
+                    
+                    # Start the schema generation in a background thread
+                    thread = Thread(
+                        target=run_async_in_thread,
+                        args=(generate_schema_async, scraper.id, job_id)
+                    )
+                    thread.start()
+                    
+                    messages.success(request, 'Site scraper created. Generating CSS schema in the background...')
+                    return redirect(f'{reverse("events:scraper_detail", kwargs={"pk": scraper.pk})}?schema_job_id={job_id}')
+                except Exception as e:
+                    messages.error(request, f'Error generating CSS schema: {str(e)}')
+                    return redirect('events:scraper_list')
+            else:
+                scraper.save()
+                messages.success(request, 'Site scraper created successfully.')
+                return redirect('events:scraper_list')
+    else:
+        form = SiteScraperForm()
+    
+    return render(request, 'events/scraper_form.html', {
+        'form': form,
+        'title': 'Create Site Scraper'
+    })
+
+@login_required
+def scraper_detail(request, pk):
+    """View details of a site scraper."""
+    scraper = get_object_or_404(SiteScraper, pk=pk, user=request.user)
+    return render(request, 'events/scraper_detail.html', {'scraper': scraper})
+
+@login_required
+def scraper_edit(request, pk):
+    """Edit a site scraper."""
+    scraper = get_object_or_404(SiteScraper, pk=pk, user=request.user)
+    
+    if request.method == 'POST':
+        form = SiteScraperForm(request.POST, instance=scraper)
+        if form.is_valid():
+            scraper = form.save(commit=False)
+            
+            # Check if the CSS schema was cleared and needs to be regenerated
+            if not scraper.css_schema:
+                try:
+                    # Run the schema generation in a background thread
+                    job_id = str(time.time())
+                    set_job_status(job_id, {
+                        'status': 'started',
+                        'message': 'Generating CSS schema...',
+                        'progress': 0
+                    })
+                    
+                    # Save the scraper first
+                    scraper.save()
+                    
+                    # Start the schema generation in a background thread
+                    thread = Thread(
+                        target=run_async_in_thread,
+                        args=(generate_schema_async, scraper.id, job_id)
+                    )
+                    thread.start()
+                    
+                    messages.success(request, 'Site scraper updated. Generating CSS schema in the background...')
+                    return redirect(f'{reverse("events:scraper_detail", kwargs={"pk": scraper.pk})}?schema_job_id={job_id}')
+                except Exception as e:
+                    messages.error(request, f'Error generating CSS schema: {str(e)}')
+                    return redirect('events:scraper_list')
+            else:
+                scraper.save()
+                messages.success(request, 'Site scraper updated successfully.')
+                return redirect('events:scraper_list')
+    else:
+        form = SiteScraperForm(instance=scraper)
+    
+    return render(request, 'events/scraper_form.html', {
+        'form': form,
+        'scraper': scraper,
+        'title': 'Edit Site Scraper'
+    })
+
+@login_required
+def scraper_delete(request, pk):
+    """Delete a site scraper."""
+    scraper = get_object_or_404(SiteScraper, pk=pk, user=request.user)
+    
+    if request.method == 'POST':
+        scraper.delete()
+        messages.success(request, 'Site scraper deleted successfully.')
+        return redirect('events:scraper_list')
+    
+    return render(request, 'events/scraper_confirm_delete.html', {'scraper': scraper})
+
+@login_required
+def scraper_test(request, pk):
+    """Test a site scraper."""
+    scraper = get_object_or_404(SiteScraper, pk=pk, user=request.user)
+    
+    # Start the test in a background thread
+    job_id = str(time.time())
+    set_job_status(job_id, {
+        'status': 'started',
+        'message': 'Testing scraper...',
+        'progress': 0
+    })
+    
+    # Start the test in a background thread
+    thread = Thread(
+        target=run_async_in_thread,
+        args=(test_scraper_async, scraper.id, job_id)
+    )
+    thread.start()
+    
+    return JsonResponse({
+        'status': 'started',
+        'job_id': job_id,
+        'message': 'Testing started'
+    })
+
+@login_required
+def scraper_test_status(request, job_id):
+    """Check the status of a scraper test."""
+    status = get_job_status(job_id)
+    if not status:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Job not found'
+        }, status=404)
+    
+    return JsonResponse(status)
+
+@login_required
+def scraper_import(request, pk):
+    """Import events from a site scraper."""
+    scraper = get_object_or_404(SiteScraper, pk=pk, user=request.user)
+    
+    # Start the import in a background thread
+    job_id = str(time.time())
+    set_job_status(job_id, {
+        'status': 'started',
+        'message': 'Importing events...',
+        'progress': 0
+    })
+    
+    # Start the import in a background thread
+    thread = Thread(
+        target=run_async_in_thread,
+        args=(import_events_async, scraper.id, job_id, request.user.id)
+    )
+    thread.start()
+    
+    return JsonResponse({
+        'status': 'started',
+        'job_id': job_id,
+        'message': 'Import started'
+    })
+
+@login_required
+def scraper_schema_status(request, job_id):
+    """Check the status of a schema generation job."""
+    status = get_job_status(job_id)
+    if not status:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Job not found'
+        }, status=404)
+    
+    return JsonResponse(status)
+
+@login_required
+def scraper_regenerate_schema(request, pk):
+    """Regenerate the CSS schema for a site scraper."""
+    scraper = get_object_or_404(SiteScraper, pk=pk, user=request.user)
+    
+    # Start the schema generation in a background thread
+    job_id = str(time.time())
+    set_job_status(job_id, {
+        'status': 'started',
+        'message': 'Generating CSS schema...',
+        'progress': 0
+    })
+    
+    # Start the schema generation in a background thread
+    thread = Thread(
+        target=run_async_in_thread,
+        args=(generate_schema_async, scraper.id, job_id)
+    )
+    thread.start()
+    
+    return JsonResponse({
+        'status': 'started',
+        'job_id': job_id,
+        'message': 'Schema generation started'
+    })
+
+# Async functions for site scraper operations
+async def generate_schema_async(scraper_id, job_id):
+    """Generate a CSS schema for a site scraper."""
+    from .scrapers.site_scraper import generate_css_schema
+    from .models import SiteScraper
+    
+    try:
+        # Update status
+        set_job_status(job_id, {
+            'status': 'running',
+            'message': 'Fetching website content...',
+            'progress': 10
+        })
+        
+        # Get the scraper
+        scraper = await sync_to_async(SiteScraper.objects.get)(pk=scraper_id)
+        
+        # Generate the CSS schema
+        set_job_status(job_id, {
+            'status': 'running',
+            'message': 'Generating CSS schema...',
+            'progress': 30
+        })
+        
+        css_schema = await generate_css_schema(scraper.url)
+        
+        if not css_schema:
+            set_job_status(job_id, {
+                'status': 'error',
+                'message': 'Failed to generate CSS schema',
+                'progress': 100
+            })
+            return
+        
+        # Update the scraper with the generated schema
+        scraper.css_schema = css_schema
+        await sync_to_async(scraper.save)()
+        
+        # Update status
+        set_job_status(job_id, {
+            'status': 'completed',
+            'message': 'CSS schema generated successfully',
+            'progress': 100,
+            'css_schema': css_schema
+        })
+    except Exception as e:
+        # Update status with error
+        set_job_status(job_id, {
+            'status': 'error',
+            'message': f'Error generating CSS schema: {str(e)}',
+            'progress': 100
+        })
+        logger.error(f"Error generating CSS schema: {str(e)}")
+        logger.error(traceback.format_exc())
+
+async def test_scraper_async(scraper_id, job_id):
+    """Test a site scraper."""
+    from .scrapers.site_scraper import run_css_schema, generate_css_schema
+    from .models import SiteScraper
+    
+    try:
+        # Update status
+        set_job_status(job_id, {
+            'status': 'running',
+            'message': 'Testing scraper...',
+            'progress': 10
+        })
+        
+        # Get the scraper
+        scraper = await sync_to_async(SiteScraper.objects.get)(pk=scraper_id)
+        
+        # Test the CSS schema
+        set_job_status(job_id, {
+            'status': 'running',
+            'message': 'Extracting events...',
+            'progress': 30
+        })
+        
+        events = await run_css_schema(scraper.url, scraper.css_schema)
+        
+        # If no events were found, try to generate a new CSS schema
+        if not events:
+            set_job_status(job_id, {
+                'status': 'running',
+                'message': 'No events found. Generating new CSS schema...',
+                'progress': 50
+            })
+            
+            # Generate a new CSS schema
+            new_css_schema = await generate_css_schema(scraper.url)
+            
+            if new_css_schema:
+                # Update the scraper with the new CSS schema
+                scraper.css_schema = new_css_schema
+                set_job_status(job_id, {
+                    'status': 'running',
+                    'message': 'New CSS schema generated. Testing again...',
+                    'progress': 70
+                })
+                
+                # Test the new CSS schema
+                events = await run_css_schema(scraper.url, scraper.css_schema)
+        
+        # Update the scraper with the test results
+        scraper.last_tested = timezone.now()
+        scraper.test_results = {
+            'timestamp': timezone.now().isoformat(),
+            'events_count': len(events),
+            'events': events[:5]  # Store only the first 5 events to avoid storing too much data
+        }
+        await sync_to_async(scraper.save)()
+        
+        # Update status
+        set_job_status(job_id, {
+            'status': 'completed',
+            'message': f'Successfully extracted {len(events)} events',
+            'progress': 100,
+            'events': events
+        })
+    except Exception as e:
+        # Update status with error
+        set_job_status(job_id, {
+            'status': 'error',
+            'message': f'Error testing scraper: {str(e)}',
+            'progress': 100
+        })
+        logger.error(f"Error testing scraper: {str(e)}")
+        logger.error(traceback.format_exc())
+
+async def import_events_async(scraper_id, job_id, user_id):
+    """Import events from a site scraper."""
+    from .scrapers.site_scraper import run_css_schema
+    from .models import SiteScraper, Event
+    from django.contrib.auth import get_user_model
+    from .utils.time_parser import format_event_datetime
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Update status
+        set_job_status(job_id, {
+            'status': 'running',
+            'message': 'Importing events...',
+            'progress': 10,
+            'events': [],  # Initialize empty events list
+            'status_message': {
+                'scraping': 'Initializing scraper...',
+                'processing': 'Waiting to process events...'
+            },
+            'stats': {
+                'found': 0,
+                'created': 0,
+                'updated': 0
+            }
+        })
+        
+        # Get the scraper and user
+        scraper = await sync_to_async(SiteScraper.objects.get)(pk=scraper_id)
+        User = get_user_model()
+        user = await sync_to_async(User.objects.get)(pk=user_id)
+        
+        # Extract events
+        set_job_status(job_id, {
+            'status': 'running',
+            'message': 'Extracting events...',
+            'progress': 30,
+            'status_message': {
+                'scraping': 'Extracting events from website...',
+                'processing': 'Waiting to process events...'
+            }
+        })
+        
+        events = await run_css_schema(scraper.url, scraper.css_schema)
+        
+        # Update status with found events count
+        current_status = get_job_status(job_id)
+        if 'stats' not in current_status:
+            current_status['stats'] = {'found': 0, 'created': 0, 'updated': 0}
+        if 'status_message' not in current_status:
+            current_status['status_message'] = {'scraping': '', 'processing': ''}
+        current_status['stats']['found'] = len(events)
+        current_status['status_message']['scraping'] = f'Found {len(events)} events'
+        current_status['progress'] = 40
+        set_job_status(job_id, current_status)
+        
+        # Process and save events
+        set_job_status(job_id, {
+            'status': 'running',
+            'message': f'Processing {len(events)} events...',
+            'progress': 60,
+            'status_message': {
+                'scraping': f'Found {len(events)} events',
+                'processing': 'Starting to process events...'
+            }
+        })
+        
+        imported_count = 0
+        updated_count = 0
+        skipped_count = 0
+        error_details = []
+        processed_events = []
+        
+        for index, event_data in enumerate(events):
+            try:
+                # Calculate progress
+                processing_progress = 60 + int((index / len(events)) * 40)
+                
+                # Update progress
+                current_status = get_job_status(job_id)
+                if 'status_message' not in current_status:
+                    current_status['status_message'] = {'scraping': '', 'processing': ''}
+                current_status['status'] = 'running'
+                current_status['message'] = f'Processing event {index + 1} of {len(events)}...'
+                current_status['progress'] = processing_progress
+                current_status['status_message']['processing'] = f'Processing event {index + 1} of {len(events)}...'
+                
+                # Skip events without required fields
+                if not event_data.get('title'):
+                    error_msg = f"Skipping event: Missing title"
+                    logger.warning(error_msg)
+                    error_details.append(error_msg)
+                    skipped_count += 1
+                    continue
+                
+                # Log the event data for debugging
+                logger.info(f"Processing event: {event_data}")
+                
+                # Format date and time
+                start_datetime = None
+                end_datetime = None
+                
+                try:
+                    start_datetime, end_datetime = format_event_datetime(
+                        event_data.get('date', ''),
+                        event_data.get('start_time', ''),
+                        event_data.get('end_time', '')
+                    )
+                except Exception as e:
+                    error_msg = f"Error parsing date/time for event '{event_data.get('title')}': {str(e)}"
+                    logger.error(error_msg)
+                    error_details.append(error_msg)
+                
+                if not start_datetime:
+                    error_msg = f"Skipping event '{event_data.get('title')}': Could not parse date/time"
+                    logger.warning(error_msg)
+                    error_details.append(error_msg)
+                    skipped_count += 1
+                    continue
+                
+                # Check if event already exists (by URL or title and start time)
+                existing_event = None
+                if event_data.get('url'):
+                    existing_events = await filter_events(user=user, url=event_data.get('url'))
+                    if existing_events:
+                        existing_event = existing_events[0]
+                
+                if not existing_event and event_data.get('title') and start_datetime:
+                    existing_events = await filter_events(
+                        user=user,
+                        title=event_data.get('title'),
+                        start_time=start_datetime
+                    )
+                    if existing_events:
+                        existing_event = existing_events[0]
+                
+                # Create or update the event
+                if existing_event:
+                    # Update existing event
+                    event = existing_event
+                    event.title = event_data.get('title', event.title)
+                    event.description = event_data.get('description', event.description)
+                    event.start_time = start_datetime
+                    event.end_time = end_datetime
+                    event.venue_name = event_data.get('location', event.venue_name)
+                    event.url = event_data.get('url', event.url)
+                    event.image_url = event_data.get('image_url', event.image_url)
+                    await save_event(event)
+                    updated_count += 1
+                    logger.info(f"Updated event: {event.title}")
+                else:
+                    # Create new event
+                    event = Event(
+                        user=user,
+                        title=event_data.get('title', ''),
+                        description=event_data.get('description', ''),
+                        start_time=start_datetime,
+                        end_time=end_datetime,
+                        venue_name=event_data.get('location', ''),
+                        url=event_data.get('url', ''),
+                        image_url=event_data.get('image_url', '')
+                    )
+                    await save_event(event)
+                    imported_count += 1
+                    logger.info(f"Created new event: {event.title}")
+                
+                # Add the processed event to the list
+                event_display = {
+                    'id': str(event.id),
+                    'title': event.title,
+                    'start_time': (
+                        event.start_time.strftime('%Y-%m-%d %H:%M') 
+                        if hasattr(event.start_time, 'strftime') 
+                        else event.start_time if event.start_time 
+                        else 'No time specified'
+                    ),
+                    'venue_name': event.venue_name or 'No venue specified'
+                }
+                processed_events.append(event_display)
+                
+                # Update the status with the processed event
+                current_status = get_job_status(job_id)
+                if 'events' not in current_status:
+                    current_status['events'] = []
+                current_status['events'] = processed_events
+                if 'stats' not in current_status:
+                    current_status['stats'] = {'found': 0, 'created': 0, 'updated': 0}
+                current_status['stats']['created'] = imported_count
+                current_status['stats']['updated'] = updated_count
+                set_job_status(job_id, current_status)
+                
+            except Exception as e:
+                error_msg = f"Error processing event: {str(e)}"
+                logger.error(error_msg)
+                error_details.append(error_msg)
+                skipped_count += 1
+        
+        # Update status
+        set_job_status(job_id, {
+            'status': 'completed',
+            'message': f'Imported {imported_count} events, updated {updated_count} events, skipped {skipped_count} events',
+            'progress': 100,
+            'imported_count': imported_count,
+            'updated_count': updated_count,
+            'skipped_count': skipped_count,
+            'error_details': error_details,
+            'events': processed_events,
+            'redirect_url': reverse('events:list'),
+            'status_message': {
+                'scraping': 'Scraping completed',
+                'processing': 'Processing completed'
+            },
+            'stats': {
+                'found': len(events),
+                'created': imported_count,
+                'updated': updated_count
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error importing events: {str(e)}")
+        logger.error(traceback.format_exc())
+        set_job_status(job_id, {
+            'status': 'error',
+            'message': f'Error importing events: {str(e)}',
+            'progress': 100
+        })

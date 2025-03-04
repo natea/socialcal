@@ -1,0 +1,104 @@
+<!-- Import Progress Modal -->
+<div class="modal fade" id="importProgressModal" tabindex="-1" aria-labelledby="importProgressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importProgressModalLabel">Import Progress</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="importStatus" class="alert alert-info">
+                    Starting import...
+                </div>
+                <div id="importDetails" class="d-none">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header">Scraping Progress</div>
+                                <div class="card-body">
+                                    <div class="progress">
+                                        <div id="scrapingProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <p id="scrapingStatus" class="mt-2 mb-0">Initializing scraper...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header">Processing Progress</div>
+                                <div class="card-body">
+                                    <div class="progress">
+                                        <div id="processingProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <p id="processingStatus" class="mt-2 mb-0">Waiting to process events...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-header">Statistics</div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 text-center">
+                                    <h5 id="eventsFound">0</h5>
+                                    <p>Events Found</p>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <h5 id="eventsCreated">0</h5>
+                                    <p>Events Created</p>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <h5 id="eventsUpdated">0</h5>
+                                    <p>Events Updated</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Live Events List -->
+                    <div class="card">
+                        <div class="card-header">Events Being Imported</div>
+                        <div class="card-body">
+                            <div id="eventsContainer" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Events will be added here dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{% url 'events:list' %}" class="btn btn-primary d-none" id="viewEventsBtn">View Events</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #eventsContainer .list-group-item {
+        animation: fadeIn 0.5s ease-in-out;
+        border-left: 4px solid #007bff;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    #importProgressModal .progress {
+        height: 20px;
+    }
+    
+    #importProgressModal .card-header {
+        background-color: #f8f9fa;
+        font-weight: 500;
+    }
+    
+    #eventsContainer {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+</style> 

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2>{{ title }}</h2>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                    <div class="messages mb-4">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">A descriptive name for this scraper (e.g. "Lily Pad Events")</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.url.id_for_label }}" class="form-label">URL</label>
+                            {{ form.url }}
+                            {% if form.url.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.url.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">The URL of the website to scrape events from</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Optional description of this scraper</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.css_schema_json.id_for_label }}" class="form-label">CSS Schema</label>
+                            {{ form.css_schema_json }}
+                            {% if form.css_schema_json.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.css_schema_json.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">
+                                JSON schema for CSS selectors. Leave blank to auto-generate.
+                                <button type="button" class="btn btn-sm btn-link" data-bs-toggle="collapse" data-bs-target="#schemaHelp">
+                                    Show help
+                                </button>
+                            </div>
+                            <div class="collapse mt-2" id="schemaHelp">
+                                <div class="card card-body bg-light">
+                                    <h5>CSS Schema Format</h5>
+                                    <p>The CSS schema should be a JSON object with field names as keys and CSS selectors as values:</p>
+                                    <pre><code>{
+  "title": ".event-card .title",
+  "date": ".event-card .date",
+  "start_time": ".event-card .start_time",
+  "end_time": ".event-card .end_time",
+  "location": ".event-card .location",
+  "description": ".event-card .description",
+  "url": ".event-card a[href]",
+  "image_url": ".event-card img[src]"
+}</code></pre>
+                                    <p>For attributes, use this format:</p>
+                                    <pre><code>{
+  "url": {"selector": ".event-card a", "attribute": "href"},
+  "image_url": {"selector": ".event-card img", "attribute": "src"}
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.is_active }}
+                            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                Active
+                            </label>
+                            {% if form.is_active.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.is_active.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Inactive scrapers won't be used for automatic imports</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'events:scraper_list' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add syntax highlighting for the JSON schema textarea
+        const cssSchemaTextarea = document.getElementById('{{ form.css_schema_json.id_for_label }}');
+        
+        // Format JSON when the form is submitted
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const cssSchemaValue = cssSchemaTextarea.value.trim();
+            if (cssSchemaValue) {
+                try {
+                    // Parse and format the JSON
+                    const parsedJson = JSON.parse(cssSchemaValue);
+                    cssSchemaTextarea.value = JSON.stringify(parsedJson, null, 2);
+                } catch (error) {
+                    // If it's not valid JSON, don't modify it
+                    console.error('Invalid JSON:', error);
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

@@ -66,3 +66,36 @@ class Event(models.Model):
     def get_full_address(self):
         """Return the full address as a string."""
         return self.location
+
+class SiteScraper(models.Model):
+    """Model to store site scraper configurations with CSS extraction strategies."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='site_scrapers'
+    )
+    name = models.CharField(max_length=200)
+    url = models.URLField(max_length=500)
+    description = models.TextField(blank=True)
+    
+    # CSS Extraction Strategy
+    css_schema = models.JSONField(default=dict)
+    
+    # Last test results
+    last_tested = models.DateTimeField(null=True, blank=True)
+    test_results = models.JSONField(default=dict, blank=True)
+    
+    # Settings
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        app_label = 'events'
+        ordering = ['name']
+        
+    def __str__(self):
+        return self.name
+        
+    def get_absolute_url(self):
+        return reverse('events:scraper_detail', kwargs={'pk': self.pk})
