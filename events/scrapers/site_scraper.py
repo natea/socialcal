@@ -114,66 +114,57 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
                 
             logger.info(f"Successfully fetched HTML content ({len(html_content)} bytes)")
             
-            # Define a comprehensive query to guide the LLM
+            # Define the exact same query as crawl4ai_demo.py
             query = """
             You are an expert web scraper. I need to extract event information from a given URL.
             
-            IMPORTANT: Your task is to create a CSS selector schema that will extract ALL events from the page.
-            
-            First, analyze the HTML structure to identify:
-            1. The container elements that hold each individual event
-            2. The elements within each container that hold specific event details
+            The page structure has events listed as cards. Each event card likely contains:
+            - Event title (probably in a heading element)
+            - Date and time information
+            - Location information
+            - Possibly an image
+            - Possibly a link to the event details
             
             Create a CSS selector schema to extract the following fields for EACH event on the page:
             1. Event title
-            2. Date (this might be combined with time)
-            3. Start time (if available separately)
-            4. End time (if available separately)
-            5. Location
-            6. Description (if available)
-            7. URL (the link to the event details)
-            8. Image URL (if available)
+            2. Date
+            3. Location
+            4. Description (if available)
+            5. URL (the link to the event details)
+            6. Image URL (if available)
             
-            CRITICAL GUIDELINES:
-            - Each selector should target ALL instances of that field across ALL events on the page.
-            - Make sure your selectors are specific enough to get the right content but general enough to work for all events.
-            - For URLs and images, select the attribute (href, src) not just the element.
-            - IMPORTANT: For images, check for both 'src' and 'data-src' attributes, as many sites use lazy loading.
-              Look for img tags with class names containing 'image', 'thumbnail', 'photo', 'pic', etc.
-            - If date and time are combined in one element, just use the 'date' field to capture both.
-            - Test your selectors mentally to ensure they will extract ALL events, not just the first one.
-            - Events are typically in elements with class names containing 'event', 'item', or 'entry'
-            - Look for repeating patterns of elements with similar structure
+            IMPORTANT NOTES:
+            - Your selectors should target EACH individual event item, not just the first one.
+            - If events are in a list or grid, make sure your selectors will work for ALL events.
+            - For URLs, select the HREF attribute of the link, not just the element itself.
+            - For image URLs, select the SRC attribute of the image, not just the element itself.
+            - AVOID selecting base64-encoded images. Look for real image URLs that start with http:// or https://
+            - If there are multiple image sources available, prefer the one with the highest resolution or quality.
+            - IMPORTANT: Some websites use CSS background-image in style attributes instead of img tags. Look for elements with style attributes containing "background-image: url(...)" and extract those URLs.
             
             Return ONLY a JSON object with field names as keys and CSS selectors as values.
             For example:
             {
-              "title": ".event-list .event-item .title",
-              "date": ".event-list .event-item .date-time",
-              "start_time": ".event-list .event-item .start-time",
-              "end_time": ".event-list .event-item .end-time",
-              "location": ".event-list .event-item .location",
-              "description": ".event-list .event-item .description",
-              "url": {"selector": ".event-list .event-item a.event-link", "attribute": "href"},
-              "image_url": {"selector": ".event-list .event-item img", "attribute": "src"}
+              "title": ".event-card .title",
+              "date": ".event-card .date",
+              "start_time": ".event-card .start_time",
+              "end_time": ".event-card .end_time",
+              "location": ".event-card .location",
+              "description": ".event-card .description",
+              "url": ".event-card a[href]",
+              "image_url": ".event-card img[src]"
             }
             
             If you need to extract attributes, use the following format:
             {
-              "url": {"selector": ".event-item a", "attribute": "href"},
-              "image_url": {"selector": ".event-item img", "attribute": "src"}
-            }
-            
-            For images with lazy loading, use data-src attribute:
-            {
-              "image_url": {"selector": ".event-item img", "attribute": "data-src"}
+              "url": {"selector": ".event-card a", "attribute": "href"},
+              "image_url": {"selector": ".event-card img", "attribute": "src"}
             }
             
             For background images in style attributes, use:
             {
-              "image_url": {"selector": ".event-item .image", "attribute": "style"}
+              "image_url": {"selector": ".event-card .image", "attribute": "style"}
             }
-            
             """
             
             # Generate the CSS schema
@@ -185,27 +176,7 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
                 api_token=api_key
             )
             
-            # Post-process the schema to remove baseSelector if present
-            if isinstance(css_schema, dict) and 'baseSelector' in css_schema:
-                logger.warning("Found baseSelector in schema, keeping it for proper event extraction")
-                # We'll keep the baseSelector as it's important for extracting multiple events
-                
-                # If the schema has a 'fields' key, extract the fields and restructure
-                if 'fields' in css_schema:
-                    fields = css_schema.pop('fields', [])
-                    for field in fields:
-                        field_name = field.get('name')
-                        if not field_name:
-                            continue
-                            
-                        if field.get('type') == 'attribute' and 'attribute' in field:
-                            css_schema[field_name] = {
-                                'selector': field.get('selector'),
-                                'attribute': field.get('attribute')
-                            }
-                        else:
-                            css_schema[field_name] = field.get('selector')
-            
+            # Log the generated schema
             logger.info(f"Generated CSS schema: {json.dumps(css_schema, indent=2)}")
             
             return css_schema
@@ -234,92 +205,68 @@ async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
     # Log the schema being used
     logger.info(f"Using CSS schema: {json.dumps(css_schema, indent=2)}")
     
-    # Create a deep copy of the schema to avoid modifying the original
-    schema_copy = json.loads(json.dumps(css_schema))
-    
-    # Convert the schema to the format expected by JsonCssExtractionStrategy
-    extraction_schema = {
-        "fields": []
-    }
-    
-    # If the schema has a baseSelector, use it, otherwise we'll use individual selectors
-    if 'baseSelector' in schema_copy:
-        base_selector = schema_copy.pop('baseSelector')
-        # Handle case where baseSelector might be in a dictionary with a 'name' key
-        if isinstance(base_selector, dict) and 'name' in base_selector:
-            extraction_schema["baseSelector"] = base_selector['name']
-        else:
-            extraction_schema["baseSelector"] = base_selector
-    else:
-        # If there's no baseSelector, we need to add a dummy one that matches all elements
-        # This is because the extraction strategy requires a baseSelector
-        extraction_schema["baseSelector"] = "html"  # Match the entire document
-    
-    # Remove any other non-field keys that might cause issues
-    for key in ['name', 'fields']:
-        if key in schema_copy:
-            schema_copy.pop(key)
-    
-    # Add fields from the CSS schema
-    for key, value in schema_copy.items():
-        if isinstance(value, dict) and 'selector' in value and 'attribute' in value:
-            # Handle fields with attributes
-            extraction_schema["fields"].append({
-                "name": key,
-                "type": "attribute",
-                "selector": value["selector"],
-                "attribute": value["attribute"]
-            })
-        else:
-            # Handle simple text fields
-            extraction_schema["fields"].append({
-                "name": key,
-                "type": "text",
-                "selector": value
-            })
-    
-    # Add generic data-src image detection if not already present
-    has_data_src_field = False
-    for field in extraction_schema["fields"]:
-        # Check if we already have a field that uses data-src attribute
-        if field.get('type') == 'attribute' and field.get('attribute') == 'data-src':
-            has_data_src_field = True
-            break
-    
-    # If no data-src field exists, add a generic one that looks for common image elements
-    if not has_data_src_field:
-        # Look for any img tag with data-src attribute
-        extraction_schema["fields"].append({
-            "name": "data_image_url",
-            "type": "attribute",
-            "selector": "img[data-src]",
-            "attribute": "data-src"
-        })
-    
-    logger.info(f"Converted schema for extraction: {json.dumps(extraction_schema, indent=2)}")
-    
     # Initialize the crawler
     crawler = AsyncWebCrawler()
     
     try:
-        # Create an extraction strategy with the provided schema
-        extraction_strategy = JsonCssExtractionStrategy(schema=extraction_schema)
+        # Use the schema directly without any conversion - this is how crawl4ai_demo.py works
+        extraction_strategy = JsonCssExtractionStrategy(schema=css_schema)
         
-        # Configure the crawler with enhanced settings for dynamic content
+        # Configure the crawler with settings that match crawl4ai_demo.py
         config = CrawlerRunConfig(
             extraction_strategy=extraction_strategy, 
             verbose=True,
-            cache_mode=CacheMode.BYPASS,  # Ensure we're not using cached content
-            delay_before_return_html=6.0,  # Increase wait time for JavaScript content to load
-            wait_for_selector=extraction_schema["baseSelector"]  # Wait for the base selector to be present
+            cache_mode=CacheMode.BYPASS  # Ensure we're not using cached content
         )
         
         # Add URL transformation to the config
         config.field_transformers = {
-            "url": lambda url, context: transform_url(url, context.get("url", url)),
-            "image_url": lambda url, context: transform_url(url, context.get("url", url)),
-            "data_image_url": lambda url, context: transform_url(url, context.get("url", url))
+            "url": lambda url, context: transform_url(url, url),
+            "image_url": lambda url, context: transform_url(url, url)
         }
+        
+        # Create a hook to log extraction details
+        async def extraction_hook(result, **kwargs):
+            logger.info(f"Extraction Hook - Processing URL: {result.url}")
+            if result.extracted_content:
+                logger.info(f"Successfully extracted {len(result.extracted_content)} items")
+                # Print first item as sample
+                if len(result.extracted_content) > 0:
+                    logger.info(f"Sample extracted item: {json.dumps(result.extracted_content[0], indent=4, sort_keys=True)}")
+            else:
+                logger.warning("No content extracted")
+                
+                # Debug the selectors against the HTML
+                logger.info("Debugging selectors against HTML:")
+                html_content = result.raw_result.html if hasattr(result, 'raw_result') and hasattr(result.raw_result, 'html') else ""
+                if html_content:
+                    try:
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(html_content, 'html.parser')
+                        
+                        # If the schema has a baseSelector, debug that first
+                        if 'baseSelector' in css_schema:
+                            base_selector = css_schema['baseSelector']
+                            base_elements = soup.select(base_selector)
+                            logger.info(f"BaseSelector: {base_selector}, Found: {len(base_elements)} elements")
+                        
+                        # Debug each field in the schema
+                        if 'fields' in css_schema and isinstance(css_schema['fields'], list):
+                            for field in css_schema['fields']:
+                                field_name = field.get('name', 'unknown')
+                                selector = field.get('selector', '')
+                                try:
+                                    elements = soup.select(selector)
+                                    logger.info(f"Field: {field_name}, Selector: {selector}, Found: {len(elements)} elements")
+                                    if len(elements) > 0 and len(elements) < 3:
+                                        logger.info(f"Sample content: {elements[0].text.strip()[:50]}...")
+                                except Exception as e:
+                                    logger.error(f"Error testing selector '{selector}' for field '{field_name}': {str(e)}")
+                    except Exception as e:
+                        logger.error(f"Error during HTML debugging: {str(e)}")
+        
+        # Add the hook to the config
+        config.hooks = {"post_extraction": extraction_hook}
         
         # Run the crawler
         async with crawler:
@@ -332,8 +279,21 @@ async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
                     logger.error("Failed to extract content: Unknown error")
                 return []
             
-            # Parse the extracted content
-            events = json.loads(result.extracted_content)
+            # Process the extracted content
+            extracted_content = result.extracted_content
+            
+            # If the content is a JSON string, parse it
+            if isinstance(extracted_content, str):
+                try:
+                    extracted_content = json.loads(extracted_content)
+                except json.JSONDecodeError:
+                    logger.error("Failed to decode JSON response")
+                    return []
+            
+            # Ensure extracted_content is a list
+            events = extracted_content if isinstance(extracted_content, list) else [extracted_content]
+            
+            logger.info(f"Raw extracted events: {len(events)}")
             
             # Format the events
             formatted_events = []
@@ -391,6 +351,8 @@ async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
     except Exception as e:
         logger.error(f"Error testing CSS schema: {str(e)}")
         logger.error(f"CSS schema that caused the error: {json.dumps(css_schema, indent=2)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return []
 
 async def scrape_with_site_scraper(scraper_id: int) -> List[Dict]:
