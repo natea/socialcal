@@ -87,6 +87,7 @@ SIMPLESCRAPER_API_KEY = os.environ.get('SIMPLESCRAPER_API_KEY', '')
 FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 OLOSTEP_API_KEY = os.environ.get('OLOSTEP_API_KEY', '')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 # Spotify API Configuration
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
