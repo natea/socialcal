@@ -1,12 +1,16 @@
-import pytest
-import json
+import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
+import json
 from django.test import TestCase
-from ..scrapers.site_scraper import (
+import pytest
+from crawl4ai import JsonCssExtractionStrategy
+from events.scrapers.site_scraper import (
     transform_url,
     generate_css_schema,
-    run_css_schema
+    run_css_schema,
+    AsyncWebCrawler
 )
+from events.utils.time_parser import extract_date_time_from_string, parse_datetime, format_event_datetime
 
 
 class TestSiteScraper(TestCase):
@@ -214,4 +218,160 @@ class TestSiteScraper(TestCase):
         # Also verify that data_image_url was added to the schema
         self.assertIn("data_image_url", test_schema)
         self.assertEqual(test_schema["data_image_url"]["selector"], "img.event-image")
-        self.assertEqual(test_schema["data_image_url"]["attribute"], "data-src") 
+        self.assertEqual(test_schema["data_image_url"]["attribute"], "data-src")
+
+    def test_all_day_basic_format(self):
+        """Test basic 'All Day' format with a simple date."""
+        date_str = "March 15, 2025"
+        time_str = "All Day"
+        
+        # Test the basic parsing
+        start_dt, end_dt = format_event_datetime(date_str, time_str)
+        
+        # Verify the start time is set to 12:00 AM
+        self.assertIn("2025-03-15 00:00:00", start_dt)
+        
+        # Verify the end time is set to 11:59 PM
+        self.assertIn("2025-03-15 23:59:00", end_dt)
+    
+    def test_all_day_with_date_range(self):
+        """Test 'All Day' format with a date range."""
+        date_str = "March 15, 2025 - March 18, 2025"
+        time_str = "All Day"
+        
+        # First verify extraction works correctly
+        extracted_date, extracted_time, extracted_end = extract_date_time_from_string(date_str)
+        self.assertEqual(extracted_date, "March 15, 2025")
+        
+        # Test the full formatting
+        start_dt, end_dt = format_event_datetime(date_str, time_str)
+        
+        # Verify the start time is set to 12:00 AM
+        self.assertIn("2025-03-15 00:00:00", start_dt)
+        
+        # Verify the end time is set to 11:59 PM
+        self.assertIn("2025-03-15 23:59:00", end_dt)
+    
+    def test_all_day_case_insensitive(self):
+        """Test that 'all day' is handled case-insensitively."""
+        date_str = "March 15, 2025"
+        time_variations = [
+            "All Day", 
+            "all day", 
+            "ALL DAY", 
+            "All day"
+        ]
+        
+        for time_str in time_variations:
+            with self.subTest(time_str=time_str):
+                start_dt, end_dt = format_event_datetime(date_str, time_str)
+                
+                # Verify the start time is set to 12:00 AM
+                self.assertIn("2025-03-15 00:00:00", start_dt)
+                
+                # Verify the end time is set to 11:59 PM
+                self.assertIn("2025-03-15 23:59:00", end_dt)
+    
+    @pytest.mark.asyncio
+    @patch('events.scrapers.site_scraper.AsyncWebCrawler')
+    async def test_all_day_event_scraping(self, mock_crawler_class):
+        """Test that 'All Day' events are scraped with correct start/end times."""
+        # Mock the crawler response
+        mock_crawler = MagicMock()
+        mock_crawler_class.return_value = mock_crawler
+        
+        # Create a test scraper schema
+        css_schema = {
+            "baseSelector": ".event",
+            "fields": {
+                "title": {"selector": "h2", "type": "text"},
+                "date": {"selector": ".date", "type": "text"},
+                "start_time": {"selector": ".time", "type": "text"}
+            }
+        }
+        
+        # Set up mock HTML content with an all-day event
+        html_content = """
+        <div class="event">
+            <h2>Conference Day 1</h2>
+            <div class="date">March 15, 2025</div>
+            <div class="time">All Day</div>
+        </div>
+        """
+        
+        # Mock the fetch method
+        mock_crawler.fetch.return_value = (True, html_content)
+        
+        # Run the scraper
+        events = await run_css_schema('https://example.com', css_schema)
+        
+        # Verify that we have one event
+        self.assertEqual(len(events), 1)
+        
+        # Get the event data
+        event = events[0]
+        self.assertEqual(event['title'], 'Conference Day 1')
+        self.assertEqual(event['date'], 'March 15, 2025')
+        self.assertEqual(event['start_time'], 'All Day')
+        
+        # Now test the format_event_datetime function
+        from events.utils.time_parser import format_event_datetime
+        start_dt, end_dt = format_event_datetime(event['date'], event['start_time'])
+        
+        # Verify the start time is 12:00 AM
+        self.assertIn("2025-03-15 00:00:00", start_dt)
+        
+        # Verify the end time is 11:59 PM
+        self.assertIn("2025-03-15 23:59:00", end_dt)
+    
+    @pytest.mark.asyncio
+    @patch('events.scrapers.site_scraper.AsyncWebCrawler')
+    async def test_date_range_all_day_event_scraping(self, mock_crawler_class):
+        """Test that 'All Day' events with date ranges are scraped correctly."""
+        # Mock the crawler response
+        mock_crawler = MagicMock()
+        mock_crawler_class.return_value = mock_crawler
+        
+        # Create a test scraper schema
+        css_schema = {
+            "baseSelector": ".event",
+            "fields": {
+                "title": {"selector": "h2", "type": "text"},
+                "date": {"selector": ".date", "type": "text"},
+                "start_time": {"selector": ".time", "type": "text"}
+            }
+        }
+        
+        # Set up mock HTML content with an all-day event with a date range
+        html_content = """
+        <div class="event">
+            <h2>Conference</h2>
+            <div class="date">March 15, 2025 - March 18, 2025</div>
+            <div class="time">All Day</div>
+        </div>
+        """
+        
+        # Mock the fetch method
+        mock_crawler.fetch.return_value = (True, html_content)
+        
+        # Run the scraper
+        events = await run_css_schema('https://example.com', css_schema)
+        
+        # Verify that we have one event
+        self.assertEqual(len(events), 1)
+        
+        # Get the event data
+        event = events[0]
+        self.assertEqual(event['title'], 'Conference')
+        self.assertEqual(event['date'], 'March 15, 2025 - March 18, 2025')
+        self.assertEqual(event['start_time'], 'All Day')
+        
+        # Now test the format_event_datetime function
+        from events.utils.time_parser import format_event_datetime
+        start_dt, end_dt = format_event_datetime(event['date'], event['start_time'])
+        
+        # Verify the start time is 12:00 AM on the first day
+        self.assertIn("2025-03-15 00:00:00", start_dt)
+        
+        # Verify the end time is 11:59 PM on the first day
+        self.assertIn("2025-03-15 23:59:00", end_dt) 

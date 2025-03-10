@@ -68,3 +68,8 @@ tockify_html_sample.txt
 events/scrapers/javascript_to_wait.js
 debug_tockify.py
 events/scrapers/revert_site_scraper.py
+events/scrapers/worldsleepday_debug.html
+events/scrapers/worldsleepday_schema.json
+events/tests/test_opensource_bs.py
+events/tests/test_opensource_scraper.py
+events/tests/test_opensource_unit.py

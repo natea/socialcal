@@ -18,6 +18,20 @@ def extract_date_time_from_string(input_str: str) -> tuple[str, str, str]:
     logger.info(f"Extracting date/time from: '{input_str}'")
     
     try:
+        # Check for date range format (e.g., "March 6, 2025 - March 9, 2025")
+        date_range_pattern = r'([A-Za-z]+\s+\d{1,2},\s+\d{4})\s*-\s*([A-Za-z]+\s+\d{1,2},\s+\d{4})'
+        date_range_match = re.search(date_range_pattern, input_str, re.IGNORECASE)
+        
+        if date_range_match:
+            start_date = date_range_match.group(1)  # e.g., "March 6, 2025"
+            end_date = date_range_match.group(2)    # e.g., "March 9, 2025"
+            
+            # Check if "All Day" is in the string
+            all_day = "All Day" if "all day" in input_str.lower() else "12:00 AM"
+            
+            logger.info(f"Successfully extracted date range - start date: '{start_date}', end date: '{end_date}', time: '{all_day}'")
+            return start_date, all_day, None
+        
         # Check for abbreviated format first (e.g., "Mon Mar 3rd 5:00pm - 11:00pm")
         abbreviated_pattern = r'([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}(?:st|nd|rd|th))\s+(\d{1,2}:\d{2}[ap]m)(?:\s*-\s*(\d{1,2}:\d{2}[ap]m))?'
         abbreviated_match = re.search(abbreviated_pattern, input_str, re.IGNORECASE)
@@ -168,6 +182,11 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
     Returns a tuple of (date, time) strings."""
     logger.info(f"Parsing date: '{date_str}' and time: '{time_str}'")
     
+    # Handle "All Day" time format
+    if time_str and time_str.lower() == "all day":
+        time_str = "12:00 AM"
+        logger.info(f"Converted 'All Day' to '{time_str}'")
+    
     # Check for format - "Day / Month Day, Year / Time"
     day_slash_date_slash_time_pattern = r'([A-Za-z]+day)\s+/\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})\s+/\s+(\d{1,2}:\d{2}\s*[pPaA]\.?[mM]\.?)'
     day_slash_date_slash_time_match = re.search(day_slash_date_slash_time_pattern, date_str, re.IGNORECASE)
@@ -224,6 +243,12 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
                 if time_match:
                     time_str = time_match.group(1).upper().strip()
                     logger.info(f"Extracted time from string with parentheses: '{time_str}'")
+            
+            # Handle "Show: 7:30PM" format
+            show_time_match = re.search(r'SHOW:\s*(\d{1,2}:\d{2}\s*[AP]M|\d{1,2}:\d{2}[AP]M)', time_str, re.IGNORECASE)
+            if show_time_match:
+                time_str = show_time_match.group(1).upper().strip()
+                logger.info(f"Extracted time from 'Show:' format: '{time_str}'")
             
             # Add space between time and AM/PM if missing
             if re.match(r'^\d{1,2}:\d{2}[AP]M$', time_str):
@@ -321,6 +346,14 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
                             raise ValueError(f"Invalid month abbreviation: {month_abbr}")
                     else:
                         raise ValueError(f"Could not parse abbreviated date format: {date_str}")
+                # Handle format like "M.DD" (e.g., "3.11" for March 11)
+                elif re.match(r'^\d{1,2}\.\d{1,2}$', date_str):
+                    try:
+                        month, day = map(int, date_str.split('.'))
+                        test_date = datetime(current_year, month, day)
+                        logger.info(f"Parsed M.DD format date without year: {month}/{day}/{current_year}")
+                    except (ValueError, IndexError):
+                        raise ValueError(f"Could not parse date in M.DD format: {date_str}")
                 else:
                     # Try other formats
                     for fmt in ["%B %d", "%b %d"]:
@@ -465,6 +498,25 @@ def format_event_datetime(date_str: str, time_str: str, end_time_str: str = None
     """Format event date and time into Django format with timezone.
     Returns a tuple of (start_datetime, end_datetime) strings."""
     try:
+        logger.info(f"Input to format_event_datetime - date: '{date_str}', time: '{time_str}', end time: '{end_time_str}'")
+        
+        # Handle "All Day" time format
+        is_all_day = False
+        if time_str and time_str.lower() == "all day":
+            time_str = "12:00 AM"
+            # For all-day events, if no end time is specified, we'll use 11:59 PM
+            if not end_time_str:
+                end_time_str = "11:59 PM"
+            is_all_day = True
+            logger.info(f"Converted 'All Day' to start: '{time_str}', end: '{end_time_str}'")
+        
+        # Handle date range with hyphen (e.g., "March 6, 2025 - March 9, 2025")
+        if date_str and '-' in date_str:
+            date_parts = date_str.split('-')
+            if len(date_parts) >= 2:
+                date_str = date_parts[0].strip()
+                logger.info(f"Extracted start date from range: '{date_str}'")
+        
         # If we have a combined date/time string in date_str, extract them
         if date_str and (not time_str or time_str == '') and (' at ' in date_str.lower() or ':' in date_str or '-' in date_str):
             extracted_date, extracted_start_time, extracted_end_time = extract_date_time_from_string(date_str)
@@ -553,8 +605,15 @@ def format_event_datetime(date_str: str, time_str: str, end_time_str: str = None
                 start_dt = tz.localize(dt)
                 start_datetime = start_dt.strftime("%Y-%m-%d %H:%M:%S%z")
                 
+                # Handle the end time differently for all-day events
+                if is_all_day:
+                    # For all-day events, set the end time to 11:59 PM
+                    end_dt = datetime.strptime(f"{date} 23:59:00", "%Y-%m-%d %H:%M:%S")
+                    end_dt = tz.localize(end_dt)
+                    end_datetime = end_dt.strftime("%Y-%m-%d %H:%M:%S%z")
+                    logger.info(f"Set end time for all-day event to 11:59 PM: {end_datetime}")
                 # If no end time provided, set it to 2 hours after start time
-                if not end_time:
+                elif not end_time:
                     end_dt = start_dt + timedelta(hours=2)
                     end_datetime = end_dt.strftime("%Y-%m-%d %H:%M:%S%z")
                 else:

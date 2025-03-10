@@ -93,7 +93,11 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
     logger.info(f"Generating CSS schema for {url}")
     
     # Initialize the crawler
-    crawler = AsyncWebCrawler()
+    crawler = AsyncWebCrawler(
+        use_stealth=True,  # Enables headless browsing for JS-rendered pages
+        max_depth=1,
+        bypass_robots=True,
+    )
     
     try:
         # Fetch the HTML content from the target URL
@@ -209,7 +213,11 @@ async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
     logger.info(f"Using CSS schema: {json.dumps(css_schema, indent=2)}")
     
     # Initialize the crawler
-    crawler = AsyncWebCrawler()
+    crawler = AsyncWebCrawler(
+        use_stealth=True,  # Enables headless browsing for JS-rendered pages
+        max_depth=1,
+        bypass_robots=True,
+    )
     
     try:
         # Add a data-src selector for image URLs if it doesn't exist already

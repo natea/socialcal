@@ -1258,6 +1258,11 @@ async def import_events_async(scraper_id, job_id, user_id):
                 end_datetime = None
                 
                 try:
+                    # Special handling for "All Day" events
+                    if event_data.get('start_time', '').lower() == 'all day':
+                        logger.info(f"Detected 'All Day' event: {event_data.get('title')}")
+                        # Let format_event_datetime handle the "All Day" conversion
+                    
                     start_datetime, end_datetime = format_event_datetime(
                         event_data.get('date', ''),
                         event_data.get('start_time', ''),

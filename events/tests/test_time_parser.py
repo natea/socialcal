@@ -97,6 +97,23 @@ class TestTimeParser(TestCase):
         date_str, time_str = parse_datetime("03/15/2024", "7:30 PM")
         self.assertEqual(date_str, "2024-03-15")
         self.assertEqual(time_str, "19:30:00")
+    
+    def test_parse_datetime_with_period_format(self):
+        """Test parsing dates with M.DD format like those on mideastclub.com."""
+        # Test with M.DD format (e.g., 3.15 for March 15)
+        date_str, time_str = parse_datetime("3.15", "7:30 PM")
+        
+        # The year will depend on the current date and the logic for past dates
+        # So we check that it has the correct format and month/day
+        self.assertTrue(date_str.startswith("202"))  # Year should be in the 2020s
+        self.assertTrue(date_str.endswith("-03-15"))  # Month and day should be March 15
+        self.assertEqual(time_str, "19:30:00")
+        
+        # Test with another example
+        date_str2, time_str2 = parse_datetime("12.25", "9:00 PM")
+        self.assertTrue(date_str2.startswith("202"))  # Year should be in the 2020s
+        self.assertTrue(date_str2.endswith("-12-25"))  # Month and day should be December 25
+        self.assertEqual(time_str2, "21:00:00")
         
     def test_parse_datetime_with_day_date_time_slash_format(self):
         """Test parsing dates with day/date/time slash-separated format."""
