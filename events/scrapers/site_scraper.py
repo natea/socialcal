@@ -10,6 +10,10 @@ from dotenv import load_dotenv
 from django.utils import timezone
 from django.conf import settings
 from asgiref.sync import sync_to_async
+from bs4 import BeautifulSoup
+import aiohttp
+import litellm
+from litellm import completion
 
 from crawl4ai import (
     AsyncWebCrawler, 
@@ -117,12 +121,12 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
                 
             logger.info(f"Successfully fetched HTML content ({len(html_content)} bytes)")
             
-            # Define the exact same query as crawl4ai_demo.py
+            # Define an improved query with better guidance for title detection
             query = """
             You are an expert web scraper. I need to extract event information from a given URL.
             
             The page structure has events listed as cards. Each event card likely contains:
-            - Event title (probably in a heading element)
+            - Event title (probably in a heading element like h1, h2, h3, or h4, or might have specific CSS classes)
             - Date and time information
             - Location information
             - Possibly an image
@@ -138,15 +142,22 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
             7. URL (the link to the event details)
             8. Image URL (if available)
             
-            IMPORTANT NOTES:
-            - Your selectors should target EACH individual event item, not just the first one.
-            - If events are in a list or grid, make sure your selectors will work for ALL events.
-            - For URLs, select the HREF attribute of the link, not just the element itself.
-            - For image URLs, select the SRC attribute of the image, not just the element itself.
+            IMPORTANT NOTES FOR TITLE SELECTION:
+            - The title is the most important element to identify correctly
+            - Check for heading elements (h1, h2, h3, h4) within event cards
+            - Look for elements with classes containing words like "title", "heading", or "name"
+            - If you can't find specific title classes, fallback to the most prominent text in each card
+            - For Eventbrite specifically, titles are often in h3 elements
+            
+            IMPORTANT NOTES FOR ALL SELECTORS:
+            - Your selectors should target EACH individual event item, not just the first one
+            - If events are in a list or grid, make sure your selectors will work for ALL events
+            - For URLs, select the HREF attribute of the link, not just the element itself
+            - For image URLs, select the SRC attribute of the image, not just the element itself
             - AVOID selecting base64-encoded images. Look for real image URLs that start with http:// or https://
-            - If there are multiple image sources available, prefer the one with the highest resolution or quality.
-            - IMPORTANT: Some websites use CSS background-image in style attributes instead of img tags. Look for elements with style attributes containing "background-image: url(...)" and extract those URLs.
-            - IMPORTANT: Check for both "src" and "data-src" attributes on image elements. Some sites use lazy loading and store the real image URL in data-src.
+            - If there are multiple image sources available, prefer the one with the highest resolution or quality
+            - IMPORTANT: Some websites use CSS background-image in style attributes instead of img tags. Look for elements with style attributes containing "background-image: url(...)" and extract those URLs
+            - IMPORTANT: Check for both "src" and "data-src" attributes on image elements. Some sites use lazy loading and store the real image URL in data-src
             
             Return ONLY a JSON object with field names as keys and CSS selectors as values.
             For example:
@@ -183,13 +194,186 @@ async def generate_css_schema(url: str, api_key: str = None) -> Dict:
                 api_token=api_key
             )
             
-            # Log the generated schema
-            logger.info(f"Generated CSS schema: {json.dumps(css_schema, indent=2)}")
+            # Post-process the schema to validate and enhance it
+            enhanced_schema = await _enhance_generated_schema(css_schema, html_content, url)
             
-            return css_schema
+            # Log the generated schema
+            logger.info(f"Generated CSS schema: {json.dumps(enhanced_schema, indent=2)}")
+            
+            return enhanced_schema
     except Exception as e:
         logger.error(f"Error generating CSS schema: {str(e)}")
         raise
+
+async def _enhance_generated_schema(schema: dict, html: str, url: str) -> dict:
+    """
+    Validate and enhance the generated schema by checking for common title selectors
+    and inferring missing selectors.
+    """
+    if not schema:
+        logger.warning("Cannot enhance empty schema")
+        return schema
+
+    # Make a copy of the original schema to avoid modifying it directly
+    enhanced_schema = schema.copy()
+    
+    try:
+        # Parse HTML with BeautifulSoup to test selectors
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Ensure baseSelector exists and works
+        base_selector = schema.get('baseSelector')
+        if not base_selector or not soup.select(base_selector):
+            # Try to find a better base selector
+            potential_base_selectors = [
+                "article.event-card", "div.event-card", ".SearchResultPanelContentEventCard-module__card", 
+                "article[data-event-id]", "div[data-event-id]",
+                "div[class*='event-card']", "div[class*='event-listing']",
+                "div:has(h3):has(.event-date)", "div:has(h3):has(time)"
+            ]
+            
+            for selector in potential_base_selectors:
+                elements = soup.select(selector)
+                if elements and len(elements) > 0:
+                    logger.info(f"Found {len(elements)} base elements with selector: {selector}")
+                    enhanced_schema['baseSelector'] = selector
+                    break
+        
+        # Check if title selector is missing or not working
+        title_selector = schema.get('title')
+        if isinstance(title_selector, dict):
+            title_selector = title_selector.get('selector')
+        
+        title_elements = []
+        if title_selector:
+            title_elements = soup.select(f"{base_selector} {title_selector}")
+        
+        if not title_elements or len(title_elements) == 0:
+            # Title selector is not working, try common alternatives
+            potential_title_selectors = ["h3", "h2", "h4", ".title", "[class*='title']", "[class*='event-name']"]
+            
+            for selector in potential_title_selectors:
+                title_elements = soup.select(f"{base_selector} {selector}")
+                if title_elements and len(title_elements) > 0:
+                    logger.info(f"Found {len(title_elements)} title elements with selector: {selector}")
+                    enhanced_schema['title'] = selector
+                    break
+        
+        # Check if date selector is extracting promotional text
+        date_selector = schema.get('date')
+        if isinstance(date_selector, dict):
+            date_selector = date_selector.get('selector')
+            
+        if date_selector:
+            date_elements = soup.select(f"{base_selector} {date_selector}")
+            
+            # Check if date elements contain promotional text
+            promo_texts = ["almost full", "going fast", "sales end soon", "save", "share", "popular", "selling fast"]
+            date_is_promo = False
+            
+            if date_elements:
+                sample_texts = [el.text.strip().lower() for el in date_elements[:5]]
+                date_is_promo = any(any(promo in text for promo in promo_texts) for text in sample_texts)
+                
+                if date_is_promo:
+                    logger.info(f"Date selector '{date_selector}' is extracting promotional text, attempting to find better selector")
+            
+            # If the date selector is not working or is extracting promo text, try alternatives
+            if not date_elements or len(date_elements) == 0 or date_is_promo:
+                # Look for elements with month names or time patterns
+                month_pattern = r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
+                time_pattern = r'\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)'
+                
+                # Find all potential date elements
+                potential_date_elements = []
+                
+                for element in soup.select(f"{base_selector} span, {base_selector} p, {base_selector} div, {base_selector} time"):
+                    text = element.text.strip()
+                    
+                    # Skip promotional messages
+                    if any(promo in text.lower() for promo in promo_texts):
+                        continue
+                    
+                    # Check for month names or time patterns
+                    is_date = bool(re.search(month_pattern, text) or re.search(time_pattern, text))
+                    
+                    if is_date:
+                        # Get the CSS selector for this element
+                        for parent in element.parents:
+                            if parent.name and soup.select(f"{base_selector} {parent.name}"):
+                                css_classes = parent.get('class', [])
+                                if css_classes:
+                                    class_selector = f"{parent.name}.{'.'.join(css_classes)}"
+                                    potential_date_elements.append((class_selector, 1))
+                                break
+                
+                # If no specific date elements found, try common date selectors
+                if not potential_date_elements:
+                    logger.info("Using fallback date/time selector: span:contains('PM'), span:contains('AM')")
+                    enhanced_schema['date'] = "span:contains('PM'), span:contains('AM')"
+                    enhanced_schema['start_time'] = "span:contains('PM'), span:contains('AM')"
+                else:
+                    # Use the most common date selector
+                    selector_counts = {}
+                    for selector, count in potential_date_elements:
+                        selector_counts[selector] = selector_counts.get(selector, 0) + count
+                    
+                    best_selector = max(selector_counts.items(), key=lambda x: x[1])[0]
+                    enhanced_schema['date'] = best_selector
+                    enhanced_schema['start_time'] = best_selector
+        
+        # Ensure all required fields exist
+        required_fields = ['title', 'date', 'start_time', 'location', 'url', 'image_url']
+        for field in required_fields:
+            if field not in enhanced_schema:
+                if field == 'url':
+                    enhanced_schema[field] = {
+                        'selector': 'a',
+                        'attribute': 'href'
+                    }
+                elif field == 'image_url':
+                    enhanced_schema[field] = {
+                        'selector': 'img',
+                        'attribute': 'src'
+                    }
+                else:
+                    enhanced_schema[field] = None
+        
+        # Ensure the schema structure is compatible with run_css_schema
+        # If we're not working with an existing 'fields' format, we need to normalize
+        if 'fields' not in enhanced_schema:
+            fields = []
+            for key, value in list(enhanced_schema.items()):
+                if key not in ['name', 'baseSelector', 'fields'] and not key.startswith('_'):
+                    field_entry = {
+                        'name': key,
+                        'type': 'text'
+                    }
+                    
+                    if isinstance(value, dict):
+                        field_entry['selector'] = value.get('selector')
+                        field_entry['attribute'] = value.get('attribute')
+                    else:
+                        field_entry['selector'] = value
+                    
+                    fields.append(field_entry)
+            
+            enhanced_schema['fields'] = fields
+            
+            # Retain the top-level keys for compatibility with the old format
+            for field in fields:
+                field_name = field['name']
+                if isinstance(enhanced_schema.get(field_name), dict):
+                    # Keep the original structure for dict fields
+                    continue
+                else:
+                    enhanced_schema[field_name] = field['selector']
+        
+        return enhanced_schema
+    
+    except Exception as e:
+        logger.error(f"Error enhancing schema: {str(e)}")
+        return schema  # Return original schema if enhancement fails
 
 async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
     """
@@ -211,6 +395,38 @@ async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
     
     # Log the schema being used
     logger.info(f"Using CSS schema: {json.dumps(css_schema, indent=2)}")
+    
+    # Ensure the schema has the required 'fields' key for the crawler
+    schema_for_crawler = css_schema.copy()
+    if 'fields' not in schema_for_crawler:
+        # We need to convert the flattened format to the format with 'fields' list
+        fields = []
+        field_keys = ['title', 'date', 'start_time', 'end_time', 'location', 'description', 'url', 'image_url']
+        
+        for key in field_keys:
+            if key in schema_for_crawler:
+                field_value = schema_for_crawler[key]
+                
+                # Convert simple selector string to field object
+                if isinstance(field_value, str):
+                    fields.append({
+                        'name': key,
+                        'selector': field_value,
+                        'type': 'text'
+                    })
+                # Handle complex selectors with attributes
+                elif isinstance(field_value, dict) and 'selector' in field_value:
+                    field_obj = {
+                        'name': key,
+                        'selector': field_value['selector'],
+                        'type': 'attribute'
+                    }
+                    if 'attribute' in field_value:
+                        field_obj['attribute'] = field_value['attribute']
+                    fields.append(field_obj)
+        
+        schema_for_crawler['fields'] = fields
+        logger.info(f"Added 'fields' list to schema for crawler compatibility")
     
     # Initialize the crawler
     crawler = AsyncWebCrawler(
@@ -275,7 +491,6 @@ async def run_css_schema(url: str, css_schema: Dict) -> List[Dict]:
                 html_content = result.raw_result.html if hasattr(result, 'raw_result') and hasattr(result.raw_result, 'html') else ""
                 if html_content:
                     try:
-                        from bs4 import BeautifulSoup
                         soup = BeautifulSoup(html_content, 'html.parser')
                         
                         # If the schema has a baseSelector, debug that first
