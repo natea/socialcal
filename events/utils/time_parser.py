@@ -1,4 +1,5 @@
 import logging
+import datetime as dt
 from datetime import datetime, timedelta
 import pytz
 import re
@@ -225,7 +226,7 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
     
     try:
         # Try to parse the date first
-        current_date = datetime.now()
+        current_date = dt.datetime.now().replace(tzinfo=None)
         current_year = current_date.year
         
         # Clean up the date string
@@ -366,7 +367,7 @@ def parse_datetime(date_str: str, time_str: str) -> tuple[str, str]:
                         raise ValueError(f"Could not parse date without year: {date_str}")
                 
                 # Get current date for comparison
-                current_date = datetime.now()
+                current_date = dt.datetime.now().replace(tzinfo=None)
                 
                 # Special case for tests: if the current date is January 24, 2025 and we're parsing January 24,
                 # we should use 2025 as the year
