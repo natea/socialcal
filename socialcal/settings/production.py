@@ -29,8 +29,9 @@ ALLOWED_HOSTS.extend(['socialcal.io', 'www.socialcal.io', 'socialcal.onrender.co
 # Database configuration
 DATABASES = {
     'default': dj_database_url.config(
-        conn_max_age=600,
+        conn_max_age=0,  # Disable persistent connections for async compatibility
         conn_health_checks=True,
+        ssl_require=True,  # Require SSL for production database
     )
 }
 

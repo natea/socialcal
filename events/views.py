@@ -34,10 +34,10 @@ stream_handler.setLevel(logging.DEBUG)
 logger = logging.getLogger('events.scrapers.generic_scraper')
 logger.addHandler(stream_handler)
 
-# Async helper functions
-save_event = sync_to_async(lambda event: event.save())
-get_event = sync_to_async(get_object_or_404)
-filter_events = sync_to_async(lambda **kwargs: list(Event.objects.filter(**kwargs)))
+# Async helper functions with thread_sensitive=False for better connection handling
+save_event = sync_to_async(lambda event: event.save(), thread_sensitive=False)
+get_event = sync_to_async(get_object_or_404, thread_sensitive=False)
+filter_events = sync_to_async(lambda **kwargs: list(Event.objects.filter(**kwargs)), thread_sensitive=False)
 
 class TimedLock:
     """A lock that automatically releases after a timeout period"""
@@ -180,11 +180,15 @@ def event_import_status(request, job_id):
 
 def run_async_in_thread(coroutine, *args, **kwargs):
     """Helper function to run async code in a thread."""
+    from django.db import connections
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
         return loop.run_until_complete(coroutine(*args, **kwargs))
     finally:
+        # Clean up database connections
+        for conn in connections.all():
+            conn.close()
         loop.close()
 
 @login_required
@@ -1160,9 +1164,13 @@ async def import_events_async(scraper_id, job_id, user_id):
     from .models import SiteScraper, Event
     from django.contrib.auth import get_user_model
     from .utils.time_parser import format_event_datetime
+    from django.db import connections, close_old_connections
     import logging
     
     logger = logging.getLogger(__name__)
+    
+    # Ensure fresh database connections
+    close_old_connections()
     
     try:
         # Update status
@@ -1182,10 +1190,10 @@ async def import_events_async(scraper_id, job_id, user_id):
             }
         })
         
-        # Get the scraper and user
-        scraper = await sync_to_async(SiteScraper.objects.get)(pk=scraper_id)
+        # Get the scraper and user with thread_sensitive=False for better connection handling
+        scraper = await sync_to_async(SiteScraper.objects.get, thread_sensitive=False)(pk=scraper_id)
         User = get_user_model()
-        user = await sync_to_async(User.objects.get)(pk=user_id)
+        user = await sync_to_async(User.objects.get, thread_sensitive=False)(pk=user_id)
         
         # Extract events
         set_job_status(job_id, {
@@ -1386,3 +1394,6 @@ async def import_events_async(scraper_id, job_id, user_id):
             'message': f'Error importing events: {str(e)}',
             'progress': 100
         })
+    finally:
+        # Ensure database connections are closed
+        close_old_connections()
