@@ -73,3 +73,6 @@ events/scrapers/worldsleepday_schema.json
 events/tests/test_opensource_bs.py
 events/tests/test_opensource_scraper.py
 events/tests/test_opensource_unit.py
+
+# Claude Flow
+.claude-flow/
