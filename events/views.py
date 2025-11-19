@@ -81,11 +81,17 @@ def set_job_status(job_id, status):
 @login_required
 def event_list(request):
     events = Event.objects.filter(user=request.user)
-    
+
     # Get search query and venue filter from query params
     search_query = request.GET.get('q')
     venue_filter = request.GET.get('venue')
-    
+    show_past = request.GET.get('show_past', 'false').lower() == 'true'
+
+    # Filter out past events by default (unless show_past is explicitly enabled)
+    if not show_past:
+        from django.utils import timezone
+        events = events.filter(start_time__gte=timezone.now())
+
     # Apply search filter if provided
     if search_query:
         events = events.filter(
@@ -93,26 +99,30 @@ def event_list(request):
             models.Q(description__icontains=search_query) |
             models.Q(venue_name__icontains=search_query)
         )
-    
+
     # Apply venue filter if provided
     if venue_filter:
         events = events.filter(venue_name__icontains=venue_filter)
-    
+
+    # Order by start time (upcoming events first)
+    events = events.order_by('start_time')
+
     # Get distinct venues for the filter dropdown
     venues = Event.objects.filter(user=request.user).exclude(venue_name='').values_list('venue_name', flat=True).distinct().order_by('venue_name')
-    
+
     # Truncate long venue names for the dropdown (keep original for filtering)
     venue_display_names = {
         venue: (venue[:50] + '...' if len(venue) > 50 else venue)
         for venue in venues
     }
-    
+
     return render(request, 'events/list.html', {
         'events': events,
         'venues': venues,
         'venue_display_names': venue_display_names,
         'selected_venue': venue_filter,
-        'search_query': search_query
+        'search_query': search_query,
+        'show_past': show_past
     })
 
 @login_required

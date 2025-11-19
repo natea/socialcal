@@ -8,6 +8,43 @@ from django.utils.dateparse import parse_datetime
 from datetime import datetime, timedelta
 import pytz
 from django.utils import timezone
+import re
+
+def is_image_caption(text):
+    """
+    Check if a text looks like an image caption or alt text.
+    Returns True if it appears to be image metadata rather than a real description.
+    """
+    if not text or not isinstance(text, str):
+        return False
+
+    text_lower = text.lower().strip()
+
+    # Check for common image caption patterns
+    image_indicators = [
+        r'^image\s+of\s+',
+        r'^photo\s+of\s+',
+        r'^picture\s+of\s+',
+        r'\.jpg$',
+        r'\.png$',
+        r'\.gif$',
+        r'\.jpeg$',
+        r'^img[-_\d]',
+        r'^\[image\]',
+        r'^\[photo\]',
+        r'alt\s*=',
+        r'caption:',
+    ]
+
+    for pattern in image_indicators:
+        if re.search(pattern, text_lower):
+            return True
+
+    # Check if text is suspiciously short (< 10 chars) - likely not a real description
+    if len(text_lower) < 10:
+        return True
+
+    return False
 
 def scrape_berklee_events():
     """Scrape events from Berklee's performance page."""
@@ -44,11 +81,11 @@ def scrape_berklee_events():
         messages=[
             {
                 "role": "system",
-                "content": "You are an expert at extracting event information from web pages. Extract exactly 5 events and format them as a JSON array. Format dates as YYYY-MM-DD and times as HH:MM in 24-hour format. If a time is shown as 8:00 PM, convert it to 20:00."
+                "content": "You are an expert at extracting event information from web pages. Extract exactly 5 events and format them as a JSON array. Format dates as YYYY-MM-DD and times as HH:MM in 24-hour format. If a time is shown as 8:00 PM, convert it to 20:00. IMPORTANT: For event_description, extract the actual event description text, NOT image captions, image alt text, or image filenames. If no real description is available, use an empty string."
             },
             {
                 "role": "user",
-                "content": f"Extract the first 10 events from this Berklee performances page. For each event, extract these fields: {fields_to_extract}\n\nPage content:\n\n{page_content}"
+                "content": f"Extract the first 10 events from this Berklee performances page. For each event, extract these fields: {fields_to_extract}. Remember: Do NOT use image captions or alt text as the event description. Only use actual descriptive text about the event.\n\nPage content:\n\n{page_content}"
             }
         ],
         temperature=0,
@@ -80,13 +117,19 @@ def scrape_berklee_events():
             
             # Convert to UTC for storage
             start_time_utc = start_time.astimezone(pytz.UTC)
-            
+
             # Set end time to 2 hours after start time
             end_time_utc = start_time_utc + timedelta(hours=2)
-            
+
+            # Validate and clean description
+            description = event.get('event_description', '')
+            if is_image_caption(description):
+                print(f"Warning: Filtered out image caption as description: '{description}'")
+                description = ''
+
             formatted_event = {
                 'title': event['event_title'],
-                'description': event['event_description'],
+                'description': description,
                 'venue_name': event['event_venue'],
                 'venue_address': event['event_address'],
                 'venue_city': event['event_city'],

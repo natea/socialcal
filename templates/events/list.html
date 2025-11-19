@@ -36,17 +36,27 @@
                 <button type="submit" class="btn btn-primary w-100">Search</button>
             </div>
         </div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-12">
+                <div class="form-check">
+                    <input type="checkbox" name="show_past" value="true" class="form-check-input" id="showPast" {% if show_past %}checked{% endif %}>
+                    <label class="form-check-label" for="showPast">
+                        Show past events
+                    </label>
+                </div>
+            </div>
+        </div>
     </form>
     
     <!-- Results Summary -->
     <div class="mb-3">
         {% with event_count=events|length %}
             {% if event_count == 0 %}
-                <p>Showing 0 events</p>
+                <p>Showing 0 {% if not show_past %}upcoming {% endif %}events{% if selected_venue %} at {{ selected_venue }}{% endif %}{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
             {% elif event_count == 1 %}
-                <p>Showing 1 event{% if selected_venue %} at {{ selected_venue }}{% endif %}{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
+                <p>Showing 1 {% if not show_past %}upcoming {% endif %}event{% if selected_venue %} at {{ selected_venue }}{% endif %}{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
             {% else %}
-                <p>Showing {{ event_count }} events{% if selected_venue %} at {{ selected_venue }}{% endif %}{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
+                <p>Showing {{ event_count }} {% if not show_past %}upcoming {% endif %}events{% if selected_venue %} at {{ selected_venue }}{% endif %}{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
             {% endif %}
         {% endwith %}
     </div>
