@@ -7,6 +7,7 @@
     <title>{% block title %}SocialCal{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     {% block extra_css %}{% endblock %}
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
     <script>
@@ -15,10 +16,13 @@
         };
     </script>
 </head>
-<body class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+{% with ns=request.resolver_match.namespace %}
+<body class="d-flex flex-column min-vh-100{% if user.is_authenticated %} has-bottom-nav{% endif %}{% block body_class %}{% endblock %}">
+    <nav class="navbar navbar-expand-lg navbar-dark sc-navbar">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'core:home' %}">SocialCal</a>
+            <a class="navbar-brand" href="{% url 'core:home' %}">
+                <i class="bi bi-calendar-heart"></i> SocialCal
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -28,7 +32,7 @@
                         <a class="nav-link" href="{% url 'calendar:index' %}">Calendar</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'events:list' %}">Events</a>
+                        <a class="nav-link" href="{% url 'events:list' %}">Discover</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav">
@@ -66,7 +70,7 @@
         {% block content %}{% endblock %}
     </div>
 
-    <footer class="bg-light py-4 mt-5">
+    <footer class="sc-footer py-4 mt-5">
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
@@ -80,10 +84,30 @@
         </div>
     </footer>
 
+    {% if user.is_authenticated %}
+    <nav class="sc-bottom-nav" aria-label="Primary">
+        <a class="nav-link{% if ns == 'calendar' %} active{% endif %}" href="{% url 'calendar:index' %}">
+            <i class="bi bi-calendar3"></i>
+            <span>Calendar</span>
+        </a>
+        <a class="nav-link{% if ns == 'events' %} active{% endif %}" href="{% url 'events:list' %}">
+            <i class="bi bi-compass"></i>
+            <span>Discover</span>
+        </a>
+        {% if user.email %}
+        <a class="nav-link{% if ns == 'profiles' %} active{% endif %}" href="{% url 'profiles:detail' email=user.email %}">
+            <i class="bi bi-person"></i>
+            <span>Profile</span>
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+
     <!-- JavaScript Dependencies -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/webcal-handler.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
+{% endwith %}
 </html>
