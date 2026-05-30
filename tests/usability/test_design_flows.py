@@ -17,6 +17,7 @@ They are intentionally defensive:
 import os
 import unittest
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.urls import reverse
@@ -42,6 +43,10 @@ def _build_chrome_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=420,900")  # mobile-ish viewport
+    # Return as soon as the DOM is ready instead of blocking on every
+    # subresource (e.g. the external Spotify SDK script loaded in <head>),
+    # which keeps the tests fast and robust against slow third-party loads.
+    options.page_load_strategy = "eager"
 
     # Honour an explicitly provided Chrome/Chromium binary (e.g. the one
     # Playwright installs in CI via `playwright install chromium`).
@@ -64,9 +69,15 @@ def _build_chrome_driver():
             return None
 
 
+@pytest.mark.flaky(reruns=2, reruns_delay=3)
 @unittest.skipUnless(SELENIUM_AVAILABLE, "selenium is not installed")
 class DesignUsabilityTests(StaticLiveServerTestCase):
-    """Drive the redesigned UI in a real browser."""
+    """Drive the redesigned UI in a real browser.
+
+    Marked ``flaky`` (via pytest-rerunfailures) so a transient slow page load on
+    a loaded CI runner is retried rather than failing the gate; the assertions
+    themselves are deterministic.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -74,8 +85,8 @@ class DesignUsabilityTests(StaticLiveServerTestCase):
         cls.driver = _build_chrome_driver()
         if cls.driver is None:
             raise unittest.SkipTest("No usable Chrome/Chromium browser available")
-        cls.driver.set_page_load_timeout(40)
-        cls.wait = WebDriverWait(cls.driver, 15)
+        cls.driver.set_page_load_timeout(45)
+        cls.wait = WebDriverWait(cls.driver, 30)
 
     @classmethod
     def tearDownClass(cls):
