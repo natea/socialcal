@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from .models import Event, EventResponse, StarredEvent
 from .forms import EventForm
+from .scrapers.ical_scraper import ICalScraper
 from .utils.spotify import SpotifyAPI
 import io
 import logging
@@ -24,6 +25,20 @@ from django.db import models
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.views.generic import TemplateView
+
+
+async def scrape_crawl4ai_events(source_url):
+    """Scrape events from a URL using the crawl4ai-based scraper.
+
+    Thin module-level wrapper that imports the heavy ``crawl4ai`` dependency
+    lazily, so importing this module (and therefore booting the app / running
+    the non-scraper test suite) does not require crawl4ai to be installed.
+    Tests patch ``events.views.scrape_crawl4ai_events``; keeping it defined at
+    module level preserves that patch target.
+    """
+    from .scrapers.generic_crawl4ai import scrape_events as _scrape
+    return await _scrape(source_url)
+
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()
@@ -282,11 +297,7 @@ async def _event_import(request):
                     })
                 else:
                     try:
-                        # Synchronous scraping (import lazily so the heavy
-                        # crawl4ai dependency is only required when scraping).
-                        from .scrapers.generic_crawl4ai import (
-                            scrape_events as scrape_crawl4ai_events,
-                        )
+                        # Synchronous scraping
                         events = await scrape_crawl4ai_events(source_url)
                         
                         # Process events
@@ -357,7 +368,6 @@ async def _event_import(request):
             elif scraper_type == 'ical':
                 # Handle iCal scraping
                 try:
-                    from .scrapers.ical_scraper import ICalScraper
                     scraper = ICalScraper()
                     events = await scraper.scrape_events(source_url)
                     
@@ -597,10 +607,7 @@ async def scrape_crawl4ai_events_async(source_url, job_id, user):
             }
         })
 
-        # Start scraping (import lazily; see note in event_import above).
-        from .scrapers.generic_crawl4ai import (
-            scrape_events as scrape_crawl4ai_events,
-        )
+        # Start scraping
         events = await scrape_crawl4ai_events(source_url)
         
         # Update progress after scraping
