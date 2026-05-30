@@ -4,8 +4,6 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from .models import Event, EventResponse, StarredEvent
 from .forms import EventForm
-from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
-from .scrapers.ical_scraper import ICalScraper
 from .utils.spotify import SpotifyAPI
 import io
 import logging
@@ -284,7 +282,11 @@ async def _event_import(request):
                     })
                 else:
                     try:
-                        # Synchronous scraping
+                        # Synchronous scraping (import lazily so the heavy
+                        # crawl4ai dependency is only required when scraping).
+                        from .scrapers.generic_crawl4ai import (
+                            scrape_events as scrape_crawl4ai_events,
+                        )
                         events = await scrape_crawl4ai_events(source_url)
                         
                         # Process events
@@ -355,6 +357,7 @@ async def _event_import(request):
             elif scraper_type == 'ical':
                 # Handle iCal scraping
                 try:
+                    from .scrapers.ical_scraper import ICalScraper
                     scraper = ICalScraper()
                     events = await scraper.scrape_events(source_url)
                     
@@ -594,7 +597,10 @@ async def scrape_crawl4ai_events_async(source_url, job_id, user):
             }
         })
 
-        # Start scraping
+        # Start scraping (import lazily; see note in event_import above).
+        from .scrapers.generic_crawl4ai import (
+            scrape_events as scrape_crawl4ai_events,
+        )
         events = await scrape_crawl4ai_events(source_url)
         
         # Update progress after scraping
