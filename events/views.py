@@ -4,7 +4,6 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from .models import Event, EventResponse, StarredEvent
 from .forms import EventForm
-from .scrapers.generic_crawl4ai import scrape_events as scrape_crawl4ai_events
 from .scrapers.ical_scraper import ICalScraper
 from .utils.spotify import SpotifyAPI
 import io
@@ -26,6 +25,20 @@ from django.db import models
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.views.generic import TemplateView
+
+
+async def scrape_crawl4ai_events(source_url):
+    """Scrape events from a URL using the crawl4ai-based scraper.
+
+    Thin module-level wrapper that imports the heavy ``crawl4ai`` dependency
+    lazily, so importing this module (and therefore booting the app / running
+    the non-scraper test suite) does not require crawl4ai to be installed.
+    Tests patch ``events.views.scrape_crawl4ai_events``; keeping it defined at
+    module level preserves that patch target.
+    """
+    from .scrapers.generic_crawl4ai import scrape_events as _scrape
+    return await _scrape(source_url)
+
 
 # Create a string buffer to capture log output
 log_stream = io.StringIO()

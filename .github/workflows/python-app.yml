@@ -52,7 +52,15 @@ jobs:
       run: |
         playwright install chromium
         playwright install-deps chromium
-        
+
+    - name: Expose Chromium to Selenium usability tests
+      run: |
+        # Point Selenium at the Chromium that Playwright just installed so the
+        # browser-based usability tests in tests/usability/ run for real.
+        # (They skip cleanly if CHROME_BIN is unset or the browser can't start.)
+        CHROME_BIN=$(python -c "from playwright.sync_api import sync_playwright; p = sync_playwright().start(); print(p.chromium.executable_path); p.stop()")
+        echo "CHROME_BIN=$CHROME_BIN" >> "$GITHUB_ENV"
+
     - name: Set up environment variables
       run: |
         echo "Setting up test environment variables"

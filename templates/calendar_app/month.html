@@ -11,7 +11,7 @@
 {% block calendar_content %}
 {% timezone timezone %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>{{ current_date|date:"F Y" }}</h2>
+    <h2 class="sc-page-title mb-0">{{ current_date|date:"F Y" }}</h2>
     <div>
         <a href="{% url 'events:export_ical' as export_url %}{{ request.scheme }}://{{ request.get_host }}/{{ export_url|slice:'1:' }}{% if user.is_authenticated %}?user_id={{ user.id }}{% endif %}"
            class="btn btn-outline-secondary me-2"
@@ -21,45 +21,49 @@
     </div>
 </div>
 
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Mon</th>
-            <th>Tue</th>
-            <th>Wed</th>
-            <th>Thu</th>
-            <th>Fri</th>
-            <th>Sat</th>
-            <th>Sun</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for week in calendar %}
-        <tr>
-            {% for day in week %}
-            <td {% if day == 0 %}class="bg-light"{% endif %}>
-                {% if day != 0 %}
-                    <div class="d-flex justify-content-between">
-                        <span>{{ day }}</span>
-                        <a href="{% url 'events:create' %}" class="text-decoration-none">+</a>
-                    </div>
-                    {% for event in events %}
-                        {% with event_date=event.start_time|date:"j" %}
-                            {% if event_date == day|stringformat:"i" %}
-                                <div class="small bg-primary text-white p-1 rounded mb-1">
-                                    <a href="{% url 'events:detail' pk=event.pk %}" class="text-white text-decoration-none">
-                                        {{ event.title }}
-                                    </a>
-                                </div>
-                            {% endif %}
-                        {% endwith %}
-                    {% endfor %}
-                {% endif %}
-            </td>
+<div class="sc-card p-2 p-md-3">
+    <table class="table calendar-month mb-0">
+        <thead>
+            <tr class="text-muted">
+                <th>Mon</th>
+                <th>Tue</th>
+                <th>Wed</th>
+                <th>Thu</th>
+                <th>Fri</th>
+                <th>Sat</th>
+                <th>Sun</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in calendar %}
+            <tr>
+                {% for day in week %}
+                <td {% if day == 0 %}class="bg-light"{% endif %}>
+                    {% if day != 0 %}
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold">{{ day }}</span>
+                            <a href="{% url 'events:create' %}" class="text-decoration-none text-purple" title="Add event">
+                                <i class="bi bi-plus-lg"></i>
+                            </a>
+                        </div>
+                        {% for event in events %}
+                            {% with event_date=event.start_time|date:"j" %}
+                                {% if event_date == day|stringformat:"i" %}
+                                    <div class="event-pill">
+                                        <a href="{% url 'events:detail' pk=event.pk %}">
+                                            {{ event.title }}
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
             {% endfor %}
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        </tbody>
+    </table>
+</div>
 {% endtimezone %}
-{% endblock %} 
+{% endblock %}

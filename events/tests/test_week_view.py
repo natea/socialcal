@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -79,19 +79,26 @@ class WeekViewTests(TestCase):
         for i in range(len(dates)-1):
             self.assertEqual(dates[i+1], dates[i] + timedelta(days=1))
 
+    @override_settings(TIME_ZONE='UTC')
     def test_get_day_events_api(self):
-        """Test the API endpoint for getting events for a specific day"""
-        # Test with a day that has events
+        """Test the API endpoint for getting events for a specific day.
+
+        Run under TIME_ZONE='UTC' so the date the view extracts from
+        ``start_time`` (via ``start_time__date`` in the active timezone) matches
+        the UTC date the test derives from ``start_time.date()``. Without this
+        the assertion is timezone/clock dependent, because the events are
+        created relative to ``timezone.now()``.
+        """
+        # events[0] is the first of three events created on consecutive days,
+        # so its date contains exactly one event: 'Test Event 1'.
         date = self.events[0].start_time.date().isoformat()
         response = self.client.get(reverse('events:day_events', kwargs={'date': date}))
-        
+
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
         self.assertTrue('events' in data)
         self.assertEqual(len(data['events']), 1)
-        # The API returns events ordered by start_time, and for this date
-        # 'Test Event 2' is the event that falls on this day
-        self.assertEqual(data['events'][0]['title'], 'Test Event 2')
+        self.assertEqual(data['events'][0]['title'], 'Test Event 1')
 
     def test_get_day_events_api_no_events(self):
         """Test the API endpoint for a day with no events"""

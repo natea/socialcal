@@ -1,0 +1,401 @@
+/*
+ * SocialCal design system — implements Kris's v0 wireframes (docs/wireframes/).
+ * Layered on top of Bootstrap 5.3 + Bootstrap Icons. Purple, mobile-app style
+ * with white rounded cards, soft shadows, a lavender onboarding backdrop, and a
+ * persistent bottom navigation (Calendar / Discover / Profile).
+ */
+
+:root {
+    /* Brand palette */
+    --sc-purple: #6c2bd9;
+    --sc-purple-dark: #5a23b6;
+    --sc-purple-light: #9f7aea;
+    --sc-purple-soft: #b794f4;
+    --sc-purple-100: #ede4ff;
+    --sc-lavender: #f3e8ff;
+    --sc-lavender-bg: #faf5ff;
+
+    /* Neutrals */
+    --sc-text: #1a202c;
+    --sc-text-muted: #718096;
+    --sc-border: #e2e8f0;
+    --sc-surface: #ffffff;
+    --sc-surface-alt: #f8f9fa;
+
+    /* Status */
+    --sc-success: #28a745;
+    --sc-danger: #dc3545;
+    --sc-star: #ffd700;
+
+    /* Shape & elevation */
+    --sc-radius: 12px;
+    --sc-radius-lg: 16px;
+    --sc-radius-pill: 9999px;
+    --sc-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+    --sc-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
+    --sc-shadow-lg: 0 10px 30px rgba(108, 43, 217, 0.12);
+
+    /* Bootstrap overrides so stock components inherit the theme */
+    --bs-primary: #6c2bd9;
+    --bs-primary-rgb: 108, 43, 217;
+    --bs-link-color: #6c2bd9;
+    --bs-link-hover-color: #5a23b6;
+}
+
+body {
+    color: var(--sc-text);
+    background-color: var(--sc-surface);
+}
+
+/* Leave room for the fixed bottom nav on authenticated app pages. */
+body.has-bottom-nav {
+    padding-bottom: 84px;
+}
+
+/* ----------------------------------------------------------------------------
+ * Buttons & links
+ * ------------------------------------------------------------------------- */
+.btn-primary,
+.btn-primary:focus {
+    background-color: var(--sc-purple);
+    border-color: var(--sc-purple);
+    font-weight: 600;
+}
+
+.btn-primary:hover,
+.btn-primary:active {
+    background-color: var(--sc-purple-dark) !important;
+    border-color: var(--sc-purple-dark) !important;
+}
+
+.btn-outline-primary {
+    color: var(--sc-purple);
+    border-color: var(--sc-purple);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary.active {
+    background-color: var(--sc-purple);
+    border-color: var(--sc-purple);
+    color: #fff;
+}
+
+.btn-secondary-soft {
+    background-color: var(--sc-purple-soft);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+}
+
+.btn-secondary-soft:hover {
+    background-color: var(--sc-purple-light);
+    color: #fff;
+}
+
+a {
+    color: var(--sc-purple);
+}
+
+a:hover {
+    color: var(--sc-purple-dark);
+}
+
+.text-purple {
+    color: var(--sc-purple) !important;
+}
+
+.bg-purple {
+    background-color: var(--sc-purple) !important;
+}
+
+/* ----------------------------------------------------------------------------
+ * Cards & surfaces
+ * ------------------------------------------------------------------------- */
+.sc-card,
+.card {
+    background: var(--sc-surface);
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius-lg);
+    box-shadow: var(--sc-shadow-sm);
+}
+
+.sc-page-title {
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+}
+
+.sc-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: var(--sc-radius-pill);
+    background-color: var(--sc-purple-100);
+    color: var(--sc-purple-dark);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* ----------------------------------------------------------------------------
+ * Top navbar (purple theme)
+ * ------------------------------------------------------------------------- */
+.navbar.sc-navbar {
+    background-color: var(--sc-purple) !important;
+    box-shadow: var(--sc-shadow-sm);
+}
+
+.sc-navbar .navbar-brand {
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+/* ----------------------------------------------------------------------------
+ * Bottom navigation (Calendar / Discover / Profile)
+ * ------------------------------------------------------------------------- */
+.sc-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: var(--sc-surface);
+    border-top: 1px solid var(--sc-border);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+    padding: 8px 0;
+}
+
+.sc-bottom-nav .nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    color: var(--sc-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 6px 18px;
+    border-radius: var(--sc-radius);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.sc-bottom-nav .nav-link i {
+    font-size: 22px;
+}
+
+.sc-bottom-nav .nav-link:hover {
+    color: var(--sc-purple);
+}
+
+.sc-bottom-nav .nav-link.active {
+    color: var(--sc-purple);
+    background-color: var(--sc-purple-100);
+}
+
+/* ----------------------------------------------------------------------------
+ * Calendar — weekly date strip (calendar_app/week.html)
+ * ------------------------------------------------------------------------- */
+.day-column {
+    text-align: center;
+    cursor: pointer;
+}
+
+.day-column .day-name {
+    color: var(--sc-text-muted);
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.day-column .day-number {
+    width: 44px;
+    height: 44px;
+    line-height: 40px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    display: inline-block;
+    font-weight: 600;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.day-column:hover .day-number:not(.selected) {
+    background-color: var(--sc-purple-100);
+}
+
+.day-column .day-number.selected {
+    background-color: var(--sc-purple);
+    color: #fff;
+    border-color: transparent;
+}
+
+.day-column .day-number.today:not(.selected) {
+    border-color: var(--sc-purple);
+    color: var(--sc-purple);
+    background-color: transparent;
+}
+
+/* Calendar — month grid (calendar_app/month.html) */
+.calendar-month td {
+    height: 90px;
+    vertical-align: top;
+}
+
+.calendar-month .event-pill {
+    display: block;
+    background-color: var(--sc-purple);
+    color: #fff;
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-bottom: 3px;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar-month .event-pill a {
+    color: #fff;
+    text-decoration: none;
+}
+
+/* Event cards in day detail / lists */
+.event-card {
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+    border-radius: var(--sc-radius);
+}
+
+.event-card:hover {
+    box-shadow: var(--sc-shadow-md);
+    transform: translateY(-1px);
+}
+
+/* ----------------------------------------------------------------------------
+ * Onboarding flow (lavender backdrop + centered white card)
+ * ------------------------------------------------------------------------- */
+body.sc-onboarding {
+    background: linear-gradient(160deg, var(--sc-lavender) 0%, var(--sc-lavender-bg) 100%);
+    min-height: 100vh;
+}
+
+.onboarding-container {
+    max-width: 460px;
+    margin: 80px auto;
+    padding: 2.5rem 2rem;
+    background: var(--sc-surface);
+    border-radius: var(--sc-radius-lg);
+    box-shadow: var(--sc-shadow-lg);
+    text-align: center;
+}
+
+.onboarding-icon {
+    color: var(--sc-purple);
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.onboarding-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.onboarding-text {
+    color: var(--sc-text-muted);
+    margin-bottom: 2rem;
+}
+
+.onboarding-container .btn {
+    border-radius: var(--sc-radius);
+    padding: 12px 20px;
+    font-weight: 600;
+}
+
+/* ----------------------------------------------------------------------------
+ * Auth pages (login / signup / password reset) — purple card layout
+ * ------------------------------------------------------------------------- */
+.sc-auth-wrapper {
+    max-width: 460px;
+    margin: 60px auto;
+}
+
+.sc-auth-card {
+    background: var(--sc-surface);
+    border-radius: var(--sc-radius-lg);
+    box-shadow: var(--sc-shadow-lg);
+    padding: 2.5rem 2rem;
+}
+
+.sc-auth-card h1,
+.sc-auth-card h2 {
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.sc-auth-card .form-control {
+    border-radius: var(--sc-radius);
+    padding: 12px 14px;
+}
+
+.sc-auth-card .btn-primary {
+    width: 100%;
+    border-radius: var(--sc-radius);
+    padding: 12px;
+}
+
+/* ----------------------------------------------------------------------------
+ * Discover feed (card stack with action bar)
+ * ------------------------------------------------------------------------- */
+.discover-card {
+    max-width: 520px;
+    margin: 0 auto;
+    background: var(--sc-surface);
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius-lg);
+    box-shadow: var(--sc-shadow-md);
+    overflow: hidden;
+}
+
+.discover-card .discover-banner {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.discover-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 0;
+}
+
+.discover-actions .action-button {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 1px solid var(--sc-border);
+    background: var(--sc-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--sc-shadow-sm);
+    cursor: pointer;
+    color: var(--sc-text-muted);
+}
+
+.discover-actions .action-button.primary {
+    background: var(--sc-purple);
+    color: #fff;
+    border-color: var(--sc-purple);
+    width: 60px;
+    height: 60px;
+}
+
+/* ----------------------------------------------------------------------------
+ * Footer
+ * ------------------------------------------------------------------------- */
+footer.sc-footer {
+    background: var(--sc-surface-alt);
+    border-top: 1px solid var(--sc-border);
+}
