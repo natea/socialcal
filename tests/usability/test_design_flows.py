@@ -6,10 +6,13 @@ end-to-end usability of the redesigned UI: the persistent bottom navigation
 (Calendar / Discover / Profile), the calendar week strip, onboarding, the event
 detail page and the profile page.
 
-They are intentionally defensive: if a browser/driver is not available (e.g. a CI
-runner without Chrome), the whole module is skipped rather than failed, so the
-normal test gate stays green everywhere. In CI, where Chromium is installed, they
-run for real.
+They are intentionally defensive:
+
+* If a browser/driver is not available (e.g. a CI runner without Chrome), the
+  whole module is skipped rather than failed, so the normal test gate stays
+  green everywhere. In CI, where Chromium is installed, they run for real.
+* All interactions use explicit ``WebDriverWait`` conditions instead of bare
+  reads, so they are robust against navigation/render races under load.
 """
 import os
 import unittest
@@ -24,6 +27,8 @@ try:
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options as ChromeOptions
     from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
     SELENIUM_AVAILABLE = True
 except Exception:  # pragma: no cover - exercised only when selenium missing
     SELENIUM_AVAILABLE = False
@@ -69,7 +74,8 @@ class DesignUsabilityTests(StaticLiveServerTestCase):
         cls.driver = _build_chrome_driver()
         if cls.driver is None:
             raise unittest.SkipTest("No usable Chrome/Chromium browser available")
-        cls.driver.set_page_load_timeout(30)
+        cls.driver.set_page_load_timeout(40)
+        cls.wait = WebDriverWait(cls.driver, 15)
 
     @classmethod
     def tearDownClass(cls):
@@ -101,7 +107,8 @@ class DesignUsabilityTests(StaticLiveServerTestCase):
         """Log in by seeding the session cookie (faster than the login form)."""
         self.client.force_login(self.user)
         cookie = self.client.cookies["sessionid"]
-        self.driver.get(self.live_server_url + "/")
+        # Must be on the domain before a cookie can be added.
+        self.driver.get(self.live_server_url + "/accounts/login/")
         self.driver.add_cookie(
             {"name": "sessionid", "value": cookie.value, "path": "/"}
         )
@@ -109,20 +116,30 @@ class DesignUsabilityTests(StaticLiveServerTestCase):
     def _go(self, path):
         self.driver.get(self.live_server_url + path)
 
+    def _bottom_nav_links(self):
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".sc-bottom-nav"))
+        )
+        return self.driver.find_elements(By.CSS_SELECTOR, ".sc-bottom-nav .nav-link")
+
     # -- tests -----------------------------------------------------------------
     def test_bottom_nav_present_and_navigates(self):
         """Authenticated users see the Calendar/Discover/Profile bottom nav."""
         self._login()
         self._go(reverse("calendar:index"))
-        nav = self.driver.find_elements(By.CSS_SELECTOR, ".sc-bottom-nav .nav-link")
+        nav = self._bottom_nav_links()
         labels = {el.text.strip() for el in nav}
-        self.assertTrue({"Calendar", "Discover", "Profile"}.issubset(labels))
+        self.assertTrue(
+            {"Calendar", "Discover", "Profile"}.issubset(labels),
+            f"bottom nav labels were {labels}",
+        )
 
         # Clicking "Discover" should land on the events list.
         for el in nav:
             if el.text.strip() == "Discover":
                 el.click()
                 break
+        self.wait.until(EC.url_contains("/events"))
         self.assertIn("/events", self.driver.current_url)
 
     def test_calendar_week_strip_renders(self):
@@ -135,6 +152,9 @@ class DesignUsabilityTests(StaticLiveServerTestCase):
                 kwargs={"year": today.year, "month": today.month, "day": today.day},
             )
         )
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".day-column"))
+        )
         day_columns = self.driver.find_elements(By.CSS_SELECTOR, ".day-column")
         self.assertEqual(len(day_columns), 7)
 
@@ -142,18 +162,33 @@ class DesignUsabilityTests(StaticLiveServerTestCase):
         """The event detail page renders title and the bottom action controls."""
         self._login()
         self._go(reverse("events:detail", args=[self.event.pk]))
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".bottom-navigation"))
+        )
         self.assertIn("Usability Test Event", self.driver.page_source)
-        controls = self.driver.find_elements(By.CSS_SELECTOR, ".bottom-navigation .nav-button")
+        controls = self.driver.find_elements(
+            By.CSS_SELECTOR, ".bottom-navigation .nav-button"
+        )
         self.assertGreaterEqual(len(controls), 3)
 
     def test_onboarding_welcome_renders(self):
         """The onboarding welcome screen renders inside a card on the lavender bg."""
         self._go(reverse("onboarding:welcome"))
-        containers = self.driver.find_elements(By.CSS_SELECTOR, ".onboarding-container")
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".onboarding-container"))
+        )
+        containers = self.driver.find_elements(
+            By.CSS_SELECTOR, ".onboarding-container"
+        )
         self.assertGreaterEqual(len(containers), 1)
 
     def test_profile_page_renders(self):
-        """The profile page renders for the logged-in user."""
+        """The profile page renders with the bottom nav for the logged-in user."""
         self._login()
         self._go(reverse("profiles:detail", kwargs={"email": self.user.email}))
-        self.assertEqual(self.driver.find_elements(By.CSS_SELECTOR, ".sc-bottom-nav").__len__(), 1)
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".sc-bottom-nav"))
+        )
+        self.assertEqual(
+            len(self.driver.find_elements(By.CSS_SELECTOR, ".sc-bottom-nav")), 1
+        )
