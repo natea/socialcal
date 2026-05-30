@@ -3,9 +3,10 @@
 {% block title %}{{ action }} Event{% endblock %}
 
 {% block content %}
+<div class="container">
 <div class="card">
     <div class="card-body">
-        <h2>{{ action }} Event</h2>
+        <h2 class="sc-page-title">{{ action }} Event</h2>
         {% if form.errors %}
         <div class="alert alert-danger">
             <strong>Please correct the errors below:</strong>
@@ -199,6 +200,7 @@
             </div>
         </form>
     </div>
+</div>
 </div>
 {% endblock %}
 
